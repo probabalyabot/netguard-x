@@ -1,0 +1,7 @@
+{
+  "title": "Send database traffic via R3",
+  "description": "Move R1's route to the database subnet from R2 to R3.",
+  "changes": [
+    {"operation": "MODIFY_ROUTE", "router": "R1", "destination": "10.0.5.0/24", "old_next_hop": "R2", "new_next_hop": "R3"}
+  ]
+}

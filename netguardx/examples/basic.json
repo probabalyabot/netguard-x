@@ -1,0 +1,59 @@
+{
+  "name": "Three-tier app network",
+  "nodes": [
+    {"id": "USER",   "type": "host",     "ip_addresses": ["10.0.0.10"],   "criticality": 1, "x": 0.06, "y": 0.22},
+    {"id": "APP",    "type": "server",   "ip_addresses": ["10.0.2.10"],   "criticality": 3, "x": 0.06, "y": 0.60},
+    {"id": "INET",   "type": "internet", "ip_addresses": ["203.0.113.1"], "criticality": 1, "label": "Internet", "x": 0.30, "y": 0.92},
+    {"id": "R1",     "type": "router",   "ip_addresses": ["10.255.0.1"],  "x": 0.30, "y": 0.50},
+    {"id": "R2",     "type": "router",   "ip_addresses": ["10.255.0.2"],  "x": 0.54, "y": 0.28},
+    {"id": "R3",     "type": "router",   "ip_addresses": ["10.255.0.3"],  "x": 0.54, "y": 0.72},
+    {"id": "FW",     "type": "firewall", "ip_addresses": ["10.255.0.10"], "x": 0.76, "y": 0.28},
+    {"id": "BACKUP", "type": "server",   "ip_addresses": ["10.0.6.10"],   "criticality": 2, "x": 0.76, "y": 0.06},
+    {"id": "DB",     "type": "server",   "ip_addresses": ["10.0.5.10"],   "criticality": 5, "x": 0.94, "y": 0.50}
+  ],
+  "links": [
+    {"source": "USER", "destination": "R1"},
+    {"source": "APP",  "destination": "R1"},
+    {"source": "R1",   "destination": "INET", "cost": 5},
+    {"source": "R1",   "destination": "R2"},
+    {"source": "R1",   "destination": "R3"},
+    {"source": "R2",   "destination": "FW"},
+    {"source": "R2",   "destination": "BACKUP"},
+    {"source": "FW",   "destination": "DB"},
+    {"source": "R3",   "destination": "DB", "cost": 20}
+  ],
+  "routes": [
+    {"router": "USER",   "destination": "0.0.0.0/0",   "next_hop": "R1"},
+    {"router": "APP",    "destination": "0.0.0.0/0",   "next_hop": "R1"},
+    {"router": "INET",   "destination": "0.0.0.0/0",   "next_hop": "R1"},
+    {"router": "DB",     "destination": "0.0.0.0/0",   "next_hop": "FW"},
+    {"router": "BACKUP", "destination": "0.0.0.0/0",   "next_hop": "R2"},
+    {"router": "R1",     "destination": "10.0.5.0/24", "next_hop": "R2", "metric": 10},
+    {"router": "R1",     "destination": "10.0.6.0/24", "next_hop": "R2", "metric": 10},
+    {"router": "R1",     "destination": "0.0.0.0/0",   "next_hop": "INET", "metric": 100},
+    {"router": "R2",     "destination": "10.0.5.0/24", "next_hop": "FW"},
+    {"router": "R2",     "destination": "0.0.0.0/0",   "next_hop": "R1"},
+    {"router": "R3",     "destination": "0.0.0.0/0",   "next_hop": "R1"},
+    {"router": "FW",     "destination": "0.0.0.0/0",   "next_hop": "R2"}
+  ],
+  "acls": [
+    {"node": "FW", "source": "APP", "destination": "DB",     "protocol": "TCP", "port": 5432, "action": "ALLOW"},
+    {"node": "FW", "source": "DB",  "destination": "BACKUP", "protocol": "TCP", "port": 873,  "action": "ALLOW"},
+    {"node": "FW", "source": "DB",  "destination": "INET",   "action": "DENY"}
+  ],
+  "flows": [
+    {"source": "USER", "destination": "APP",    "protocol": "TCP", "port": 443,  "criticality": 2, "description": "Users reach the app"},
+    {"source": "APP",  "destination": "DB",     "protocol": "TCP", "port": 5432, "criticality": 5, "description": "App queries the database"},
+    {"source": "APP",  "destination": "INET",   "protocol": "TCP", "port": 443,  "description": "App calls external APIs"},
+    {"source": "DB",   "destination": "BACKUP", "protocol": "TCP", "port": 873,  "criticality": 3, "description": "Nightly backup"},
+    {"source": "DB",   "destination": "INET",   "protocol": "TCP", "port": 443}
+  ],
+  "policies": [
+    {"id": "P1", "action": "ALLOW", "source": "APP",  "destination": "DB",     "protocol": "TCP", "port": 5432, "waypoint": "FW", "description": "App reaches the database, through the firewall"},
+    {"id": "P2", "action": "DENY",  "source": "DB",   "destination": "INET",   "protocol": "TCP", "port": 443,  "description": "Database never reaches the internet"},
+    {"id": "P3", "action": "DENY",  "source": "USER", "destination": "DB",     "protocol": "TCP", "port": 5432, "description": "Users never reach the database directly"},
+    {"id": "P4", "action": "DENY",  "source": "INET", "destination": "DB",     "protocol": "TCP", "port": 5432, "description": "The internet never reaches the database"},
+    {"id": "P5", "action": "ALLOW", "source": "USER", "destination": "APP",    "protocol": "TCP", "port": 443},
+    {"id": "P6", "action": "ALLOW", "source": "DB",   "destination": "BACKUP", "protocol": "TCP", "port": 873}
+  ]
+}

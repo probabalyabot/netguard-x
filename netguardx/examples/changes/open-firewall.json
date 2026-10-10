@@ -1,0 +1,8 @@
+{
+  "title": "Temporarily allow all traffic to the database",
+  "description": "Insert a broad ALLOW rule at the top of the firewall ACL.",
+  "changes": [
+    {"operation": "ADD_ACL_RULE", "position": 0,
+     "rule": {"node": "FW", "source": "any", "destination": "DB", "protocol": "ANY", "action": "ALLOW"}}
+  ]
+}

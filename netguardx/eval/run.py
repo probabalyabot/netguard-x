@@ -1,0 +1,173 @@
+"""Replay one command stream through several gatekeeping strategies and measure each.
+
+Arms:
+    none          every applicable command is executed
+    lint          rejected only if it introduces a route whose next hop cannot be used
+    reachability  rejected only if a flow that was delivered stops being delivered ("is it up?")
+    full          the Gatekeeper with full verification; REVIEW commands are held, then approved
+    incremental   the same Gatekeeper with the incremental verifier
+
+Ground truth for "unsafe" is the full ``analyze`` verdict against the state the command is
+proposed in, so the ``full`` arm is safe by construction.  What the arms are compared on is how
+much unsafe configuration the weaker checks let through, and what each check costs in time.
+For the gatekeeper arms every report is also compared with that ground-truth report
+(``mismatches``), and ``resim_share`` is the fraction of traffic classes that were re-simulated.
+"""
+from __future__ import annotations
+
+import csv
+import json
+import time
+from pathlib import Path
+from typing import Any, Callable, Optional
+
+from ..changes import ChangeError, apply_changes
+from ..gatekeeper import EXECUTED, HELD, INVALID, REJECTED, Gatekeeper, full_verifier
+from ..impact import AnalysisOptions, analyze
+from ..incremental import IncrementalVerifier
+from ..models import Network
+from ..network import NetworkState, static_issues
+from ..verify import verify_network
+from .commands import Command, generate_commands
+from .topologies import campus_network
+
+ARMS = ("none", "lint", "reachability", "full", "incremental")
+
+
+def _delivered(net: Network) -> set[str]:
+    return {t.key for t in verify_network(net).traces if t.delivered}
+
+
+def _lint_ok(before: Network, after: Network) -> bool:
+    known = {i.key() for i in static_issues(NetworkState(before))}
+    return all(i.key() in known for i in static_issues(NetworkState(after)))
+
+
+def _reach_ok(before: Network, after: Network) -> bool:
+    return _delivered(before) <= _delivered(after)
+
+
+_CHECKS: dict[str, Optional[Callable[[Network, Network], bool]]] = {
+    "none": None, "lint": _lint_ok, "reachability": _reach_ok,
+}
+
+
+def _pct(values: list[float], q: float) -> float:
+    if not values:
+        return 0.0
+    s = sorted(values)
+    return round(s[min(len(s) - 1, int(q * len(s)))], 3)
+
+
+def run_arm(arm: str, network: Network, commands: list[Command],
+            options: AnalysisOptions) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    gk = None
+    if arm in ("full", "incremental"):
+        verifier = IncrementalVerifier() if arm == "incremental" else full_verifier
+        gk = Gatekeeper(network, verifier=verifier, options=options)
+    state = network
+    required = _delivered(network)  # traffic that worked at the start must keep working
+    n = {"executed": 0, "rejected": 0, "held": 0, "invalid": 0,
+         "unsafe_executed": 0, "safe_rejected": 0, "unhealthy_steps": 0, "mismatches": 0}
+    times: list[float] = []
+    shares: list[float] = []
+    rows: list[dict[str, Any]] = []
+
+    for cmd in commands:
+        try:
+            oracle = analyze(state, cmd.changes, options)
+            verdict = oracle.verdict["decision"]
+        except ChangeError:
+            oracle, verdict = None, INVALID
+        ms, share = 0.0, None
+        if gk is not None:
+            d = gk.propose(cmd.changes, meta={"intent": cmd.intent})
+            if d.report is not None:  # commands that do not apply are not verified, so not timed
+                ms, meta = d.verify_ms, d.report.meta
+                share = round(meta.get("resimulated", meta["classes"]) / meta["classes"], 4)
+                times.append(ms)
+                shares.append(share)
+            n["mismatches"] += (d.report is None) != (oracle is None) or (
+                oracle is not None and d.report.model_dump(exclude={"meta"}) != oracle.model_dump(exclude={"meta"}))
+            if d.outcome == HELD:
+                n["held"] += 1
+                d = gk.approve(d.pending_id)
+            outcome, state = d.outcome, gk.network
+        elif verdict == INVALID:
+            outcome = INVALID
+        else:
+            check = _CHECKS[arm]
+            t0 = time.perf_counter()
+            after = apply_changes(state, cmd.changes)[0]
+            ok = check is None or check(state, after)
+            if check is not None:
+                ms = round((time.perf_counter() - t0) * 1000, 3)
+                times.append(ms)
+            outcome = EXECUTED if ok else REJECTED
+            if ok:
+                state = after
+
+        unsafe = verdict == "NOT_RECOMMENDED"
+        n[outcome.lower()] += 1
+        n["unsafe_executed"] += outcome == EXECUTED and unsafe
+        n["safe_rejected"] += outcome == REJECTED and not unsafe
+        rep = verify_network(state)
+        healthy = rep.summary["policies_violated"] == 0 and required <= {t.key for t in rep.traces if t.delivered}
+        n["unhealthy_steps"] += not healthy
+        rows.append({"arm": arm, "step": cmd.step, "intent": cmd.intent, "operation": cmd.changes[0].operation,
+                     "oracle": verdict, "outcome": outcome, "check_ms": ms, "resim_share": share,
+                     "healthy": healthy})
+
+    summary = {"commands": len(commands), **n,
+               "resim_share": round(sum(shares) / len(shares), 4) if shares else None,
+               "check_ms_mean": round(sum(times) / len(times), 3) if times else 0.0,
+               "check_ms_p50": _pct(times, 0.5), "check_ms_p95": _pct(times, 0.95)}
+    return summary, rows
+
+
+def run_eval(sites: list[int], commands: int = 200, seed: int = 0, fault_rate: float = 0.3,
+             probes: bool = True, arms: tuple[str, ...] = ARMS) -> dict[str, Any]:
+    options = AnalysisOptions(probes=probes, rollback=False)  # one change per command: no batch to split
+    runs: list[dict[str, Any]] = []
+    steps: list[dict[str, Any]] = []
+    for size in sites:
+        net = campus_network(size)
+        stream = generate_commands(net, commands, seed=seed, fault_rate=fault_rate)
+        results = {}
+        for arm in arms:
+            results[arm], rows = run_arm(arm, net, stream, options)
+            steps += [{"sites": size, **r} for r in rows]
+        runs.append({"sites": size, "nodes": len(net.nodes), "links": len(net.links), "routes": len(net.routes),
+                     "flows": len(net.flows), "policies": len(net.policies), "arms": results})
+    return {"config": {"sites": sites, "commands": commands, "seed": seed, "fault_rate": fault_rate,
+                       "probes": probes, "arms": list(arms)},
+            "runs": runs, "steps": steps}
+
+
+def write_results(result: dict[str, Any], out_dir: str) -> Path:
+    out = Path(out_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "summary.json").write_text(json.dumps({"config": result["config"], "runs": result["runs"]}, indent=2))
+    with (out / "steps.csv").open("w", newline="") as fh:
+        w = csv.DictWriter(fh, fieldnames=list(result["steps"][0]) if result["steps"] else ["sites"])
+        w.writeheader()
+        w.writerows(result["steps"])
+    return out
+
+
+def format_summary(result: dict[str, Any]) -> str:
+    c = result["config"]
+    L = [f"{c['commands']} commands per network, seed {c['seed']}, fault rate {c['fault_rate']}, "
+         f"probes {'on' if c['probes'] else 'off'}", ""]
+    head = ("sites", "nodes", "arm", "executed", "rejected", "held", "invalid", "unsafe_exec", "safe_rej",
+            "unhealthy", "mismatch", "resim", "p50_ms", "p95_ms")
+    L.append("  ".join(f"{h:>12}" for h in head))
+    for run in result["runs"]:
+        for arm, s in run["arms"].items():
+            gated = s["resim_share"] is not None
+            vals = (run["sites"], run["nodes"], arm, s["executed"], s["rejected"], s["held"], s["invalid"],
+                    s["unsafe_executed"], s["safe_rejected"], s["unhealthy_steps"],
+                    s["mismatches"] if gated else "-", f"{s['resim_share']:.1%}" if gated else "-",
+                    s["check_ms_p50"], s["check_ms_p95"])
+            L.append("  ".join(f"{v:>12}" for v in vals))
+    return "\n".join(L)

@@ -1,0 +1,7 @@
+{
+  "title": "Cable the firewall straight to the backup server",
+  "description": "Add a direct FW-BACKUP link. Backup traffic changes path but stays allowed.",
+  "changes": [
+    {"operation": "ADD_LINK", "node_a": "FW", "node_b": "BACKUP"}
+  ]
+}

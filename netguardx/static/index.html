@@ -1,0 +1,666 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NetGuard-X: check a network change before you deploy it</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  color-scheme: light;
+  --page: #ebeef1;
+  --surface: #ffffff;
+  --ink: #18222c;
+  --muted: #5a6875;
+  --rule: #d2d9e0;
+  --rule-soft: #e4e9ee;
+  --brick: #b3382c;
+  --brick-tint: #f7e3e0;
+  --jade: #12795b;
+  --jade-tint: #dcf0e8;
+  --ochre: #8a5a00;
+  --ochre-tint: #f6ebd3;
+  --navy: #1f3b73;
+  --navy-tint: #e3e9f5;
+  --sans: "Instrument Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--page); color: var(--ink);
+  font: 400 14.5px/1.5 var(--sans);
+}
+h1, h2, h3, p { margin: 0; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; }
+.muted { color: var(--muted); }
+.mono { font-family: var(--mono); font-size: 12.5px; }
+
+/* ---- shell ---- */
+.top {
+  display: flex; align-items: baseline; gap: 18px; flex-wrap: wrap;
+  padding: 14px 24px; background: var(--surface); border-bottom: 1px solid var(--rule);
+}
+.brand { font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
+.top .tag { color: var(--muted); }
+.layout {
+  display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 0;
+  max-width: 1500px; margin: 0 auto; align-items: start;
+}
+.panel {
+  background: var(--surface); border-right: 1px solid var(--rule); min-height: calc(100vh - 53px);
+  padding: 20px 20px 32px;
+}
+.panel section + section { margin-top: 26px; padding-top: 22px; border-top: 1px solid var(--rule-soft); }
+.panel h2 { font-size: 15px; font-weight: 650; margin-bottom: 10px; }
+.panel label { display: block; font-size: 13px; font-weight: 550; margin: 12px 0 4px; }
+main { padding: 24px 28px 48px; min-width: 0; }
+
+/* ---- controls ---- */
+select, input[type=text], input[type=number], textarea {
+  width: 100%; border: 1px solid var(--rule); border-radius: 4px; background: #fff; padding: 7px 9px;
+}
+textarea { font-family: var(--mono); font-size: 12px; line-height: 1.45; resize: vertical; }
+button {
+  border: 1px solid var(--rule); background: #fff; border-radius: 4px; padding: 6px 11px; cursor: pointer;
+  font-weight: 550;
+}
+button:hover { border-color: var(--muted); }
+button.primary { background: var(--navy); border-color: var(--navy); color: #fff; padding: 9px 16px; }
+button.primary:hover { background: #17305e; }
+button[disabled] { opacity: .6; cursor: progress; }
+.row { display: flex; gap: 8px; }
+.row input { flex: 1; min-width: 0; }
+details summary { cursor: pointer; font-size: 13px; font-weight: 550; margin-top: 12px; }
+details[open] summary { margin-bottom: 6px; }
+.presets { display: grid; gap: 6px; }
+.presets button { text-align: left; font-weight: 500; line-height: 1.3; padding: 8px 10px; }
+.presets button[aria-pressed=true] { border-color: var(--navy); background: var(--navy-tint); }
+.note { font-size: 13px; color: var(--muted); margin-top: 6px; }
+.error { color: var(--brick); font-size: 13px; margin-top: 10px; white-space: pre-wrap; }
+.weights { display: grid; grid-template-columns: 1fr 74px; gap: 6px 10px; align-items: center; }
+.weights label { margin: 0; font-weight: 400; }
+
+/* ---- verdict ---- */
+.verdict { border-left: 5px solid var(--muted); background: var(--surface); padding: 16px 20px 16px; border-top: 1px solid var(--rule); border-right: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
+.verdict.bad { border-left-color: var(--brick); }
+.verdict.review { border-left-color: var(--ochre); }
+.verdict.good { border-left-color: var(--jade); }
+.verdict h2 { font-size: 24px; line-height: 1.25; font-weight: 650; letter-spacing: -0.015em; max-width: 62ch; }
+.decision { font-weight: 650; margin-bottom: 4px; font-size: 13.5px; }
+.bad .decision { color: var(--brick); } .review .decision { color: var(--ochre); } .good .decision { color: var(--jade); }
+.changes-list { margin: 10px 0 0; padding: 0; list-style: none; }
+.changes-list li { font-family: var(--mono); font-size: 12.5px; color: var(--muted); }
+dl.facts { display: flex; flex-wrap: wrap; margin: 16px 0 0; border-top: 1px solid var(--rule-soft); }
+dl.facts > div { padding: 10px 22px 0 0; margin-right: 22px; min-width: 96px; }
+dl.facts dt { font-size: 12.5px; color: var(--muted); }
+dl.facts dd { margin: 0; font-size: 20px; font-weight: 650; }
+dl.facts dd small { font-size: 13px; font-weight: 500; color: var(--muted); }
+.meter { height: 6px; background: var(--rule-soft); border-radius: 3px; margin-top: 6px; width: 120px; overflow: hidden; }
+.meter i { display: block; height: 100%; background: var(--muted); }
+.meter.lvl-high i, .meter.lvl-critical i { background: var(--brick); }
+.meter.lvl-medium i { background: var(--ochre); }
+.meter.lvl-low i { background: var(--jade); }
+
+/* ---- work area ---- */
+.work { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 24px; margin-top: 24px; align-items: start; }
+.map-col { position: sticky; top: 12px; }
+h3.sec { font-size: 15px; font-weight: 650; margin: 0 0 10px; }
+.mapbox { background: var(--surface); border: 1px solid var(--rule); padding: 12px 14px 14px; }
+.map-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 4px; overflow: hidden; }
+.seg button { border: 0; border-radius: 0; background: #fff; }
+.seg button + button { border-left: 1px solid var(--rule); }
+.seg button[aria-pressed=true] { background: var(--navy); color: #fff; }
+.flowpick { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
+.flowpick label { font-size: 13px; font-weight: 550; margin: 0; white-space: nowrap; }
+svg.topo { width: 100%; height: auto; display: block; background: #fbfcfd; border: 1px solid var(--rule-soft); }
+svg.topo text { font-family: var(--sans); fill: var(--ink); }
+svg.topo .ip { font-family: var(--mono); font-size: 10px; fill: var(--muted); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 8px; font-size: 12.5px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { display: inline-block; width: 22px; height: 0; border-top: 3px solid var(--ink); }
+.legend i.rm { border-top: 3px dashed var(--brick); }
+.legend i.add { border-top-color: var(--jade); }
+.legend i.keep { border-top-color: var(--ink); }
+
+/* path diff lines */
+.pathdiff { margin-top: 12px; border: 1px solid var(--rule-soft); }
+.pd-line { display: grid; grid-template-columns: 22px 1fr auto; gap: 8px; align-items: center; padding: 7px 10px; }
+.pd-line + .pd-line { border-top: 1px solid var(--rule-soft); }
+.pd-sign { font-family: var(--mono); font-weight: 500; text-align: center; }
+.pd-line.before { background: #fdf6f5; } .pd-line.before .pd-sign { color: var(--brick); }
+.pd-line.after { background: #f4fbf8; } .pd-line.after .pd-sign { color: var(--jade); }
+.hops { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.hop { font-family: var(--mono); font-size: 12.5px; padding: 1px 6px; border-radius: 3px; background: #fff; border: 1px solid var(--rule); }
+.hop.gone { background: var(--brick-tint); border-color: #e7b9b3; color: var(--brick); }
+.hop.new { background: var(--jade-tint); border-color: #a9d8c7; color: var(--jade); }
+.hop-sep { color: var(--muted); font-size: 11px; }
+.pd-status { font-size: 12.5px; color: var(--muted); text-align: right; }
+.pd-status.ok { color: var(--jade); } .pd-status.fail { color: var(--brick); }
+
+/* ---- findings ---- */
+.finding { background: var(--surface); border: 1px solid var(--rule); }
+.finding + .finding { margin-top: 8px; }
+.f-head { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; align-items: start; width: 100%; text-align: left; border: 0; border-radius: 0; background: none; padding: 12px 14px; font-weight: 600; }
+.f-head:hover { background: #f7f9fb; }
+.f-head .f-title { font-size: 14.5px; line-height: 1.35; }
+.sev { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 650; padding-top: 1px; white-space: nowrap; }
+.sev::before { content: ""; width: 9px; height: 9px; background: var(--muted); display: inline-block; }
+.sev.critical { color: var(--brick); } .sev.critical::before { background: var(--brick); }
+.sev.high { color: var(--brick); } .sev.high::before { background: #fff; box-shadow: inset 0 0 0 2px var(--brick); }
+.sev.medium { color: var(--ochre); } .sev.medium::before { background: var(--ochre); border-radius: 50%; }
+.sev.info { color: var(--muted); } .sev.info::before { background: #fff; box-shadow: inset 0 0 0 2px var(--muted); border-radius: 50%; }
+.f-body { padding: 2px 14px 14px 14px; border-top: 1px solid var(--rule-soft); }
+.f-body p.human { margin-top: 10px; max-width: 64ch; }
+.chain { list-style: none; margin: 10px 0 0; padding: 0 0 0 4px; }
+.chain li { position: relative; padding: 0 0 12px 22px; border-left: 2px solid var(--rule); margin-left: 5px; }
+.chain li:last-child { border-left-color: transparent; padding-bottom: 0; }
+.chain li::before { content: ""; position: absolute; left: -6px; top: 5px; width: 10px; height: 10px; border-radius: 50%; background: var(--surface); border: 2px solid var(--muted); }
+.chain li.k-change::before { border-color: var(--navy); background: var(--navy); }
+.chain li.k-routing::before, .chain li.k-path::before { border-color: var(--ochre); }
+.chain li.k-enforcement::before, .chain li.k-policy::before { border-color: var(--brick); }
+.chain li.k-impact::before { border-color: var(--brick); background: var(--brick); }
+.chain .lbl { font-weight: 600; }
+.chain .det { color: var(--muted); font-size: 13px; white-space: pre-wrap; margin-top: 1px; }
+.tech { margin-top: 12px; font-size: 13px; color: var(--muted); max-width: 70ch; }
+.tech b { color: var(--ink); font-weight: 600; }
+.showmap { margin-top: 12px; font-size: 13px; }
+
+/* ---- tables ---- */
+.section { margin-top: 30px; }
+.tablewrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--rule); }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+th, td { text-align: left; vertical-align: top; padding: 9px 12px; border-bottom: 1px solid var(--rule-soft); }
+th { font-weight: 600; color: var(--muted); font-size: 13px; background: #f7f9fb; white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+td .mono { display: block; margin-top: 2px; color: var(--muted); }
+.st-ok { color: var(--jade); font-weight: 600; } .st-bad { color: var(--brick); font-weight: 600; } .st-warn { color: var(--ochre); font-weight: 600; }
+.rollback { background: var(--surface); border: 1px solid var(--rule); padding: 14px 16px; max-width: 76ch; }
+.rollback ul { margin: 8px 0 0; padding-left: 18px; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 30px; }
+.empty { color: var(--muted); padding: 28px 0; }
+
+@media (max-width: 1240px) {
+  .work { grid-template-columns: 1fr; }
+  .map-col { position: static; order: -1; }
+}
+@media (max-width: 900px) {
+  .layout { grid-template-columns: 1fr; }
+  .panel { min-height: 0; border-right: 0; border-bottom: 1px solid var(--rule); }
+  main { padding: 18px 16px 40px; }
+  .verdict h2 { font-size: 20px; }
+}
+@media (prefers-reduced-motion: no-preference) { button { transition: background-color .12s, border-color .12s; } }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand">NetGuard-X</div>
+  <p class="tag">Check a network change before you deploy it.</p>
+</header>
+
+<div class="layout">
+  <aside class="panel" aria-label="Inputs">
+    <section>
+      <h2>Network</h2>
+      <label for="netSelect">Model</label>
+      <select id="netSelect"><option>Loading examples</option></select>
+      <label for="netFile">Or load a network JSON file</label>
+      <input id="netFile" type="file" accept=".json,application/json">
+      <p id="netMeta" class="note"></p>
+      <details>
+        <summary>Edit network JSON</summary>
+        <textarea id="netJson" rows="10" spellcheck="false" aria-label="Network JSON"></textarea>
+        <div style="margin-top:8px"><button id="applyNet" type="button">Use this network</button></div>
+      </details>
+    </section>
+
+    <section>
+      <h2>Proposed change</h2>
+      <div id="presets" class="presets" role="group" aria-label="Example changes"></div>
+      <p id="presetNote" class="note"></p>
+      <label for="changeJson">Change as JSON</label>
+      <textarea id="changeJson" rows="11" spellcheck="false"></textarea>
+      <label for="nl">Or describe it in words</label>
+      <div class="row">
+        <input id="nl" type="text" placeholder="Change the route on R1 for 10.0.5.0/24 to R3">
+        <button id="draft" type="button">Draft</button>
+      </div>
+      <p id="nlNote" class="note"></p>
+      <details>
+        <summary>Risk weights</summary>
+        <div class="weights" id="weights"></div>
+        <p class="note">Defaults are starting points, not calibrated values.</p>
+      </details>
+      <div style="margin-top:16px"><button id="run" class="primary" type="button">Analyze change</button></div>
+      <p id="err" class="error" role="alert"></p>
+    </section>
+  </aside>
+
+  <main id="main" aria-live="polite">
+    <p class="empty">Loading.</p>
+  </main>
+</div>
+
+<script>
+"use strict";
+/* ------------------------------------------------------------------ helpers */
+const $ = (s, r = document) => r.querySelector(s);
+function h(tag, attrs, ...kids) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v === false || v == null) continue;
+    if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+    else if (k === "class") el.className = v;
+    else el.setAttribute(k, v === true ? "" : v);
+  }
+  for (const c of kids.flat()) if (c != null && c !== false) el.append(c.nodeType ? c : document.createTextNode(String(c)));
+  return el;
+}
+const NS = "http://www.w3.org/2000/svg";
+function s(tag, attrs, ...kids) {
+  const el = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs || {})) if (v != null && v !== false) el.setAttribute(k, v);
+  for (const c of kids.flat()) if (c != null) el.append(c.nodeType ? c : document.createTextNode(String(c)));
+  return el;
+}
+async function api(path, body) {
+  const res = await fetch(path, body === undefined ? {} : {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+  });
+  let data = null;
+  try { data = await res.json(); } catch (_) { /* not json */ }
+  if (!res.ok) throw new Error((data && data.detail) || `Request failed (${res.status})`);
+  return data;
+}
+const ek = (a, b) => [a, b].sort().join("|");
+const edgesOf = (path) => { const out = new Set(); for (let i = 0; i < path.length - 1; i++) out.add(ek(path[i], path[i + 1])); return out; };
+const sentence = (t) => t.charAt(0) + t.slice(1).toLowerCase();
+function keyLabel(key) {
+  const m = /^(.+?)>(.+?)\/(.+?)\/(.+)$/.exec(key);
+  if (!m) return key;
+  return `${m[1]} to ${m[2]}, ${m[3].toLowerCase()}${m[4] === "*" ? "" : "/" + m[4]}`;
+}
+function statusText(status, path) {
+  const stop = path[path.length - 1];
+  switch (status) {
+    case "DELIVERED": return "delivered";
+    case "DROPPED_ACL": return `dropped by ACL at ${stop}`;
+    case "LOOP": return `loops at ${stop}`;
+    case "BLACKHOLE": return `no route at ${stop}`;
+    case "INVALID_NEXT_HOP": return `unusable next hop at ${stop}`;
+    default: return status.toLowerCase();
+  }
+}
+
+/* -------------------------------------------------------------------- state */
+const state = {
+  examples: null, network: null, baseline: null, report: null,
+  mode: "changes", selectedKey: null, openFinding: null, presetId: null,
+};
+const WEIGHT_FIELDS = [
+  ["broken_flows", "Broken flow"], ["security_violations", "Security violation"], ["new_exposures", "Newly reachable pair"],
+  ["routing_failures", "Routing failure"], ["criticality", "Criticality"],
+];
+const DEFAULT_WEIGHTS = { broken_flows: 20, security_violations: 30, new_exposures: 6, routing_failures: 10, criticality: 5 };
+
+/* ---------------------------------------------------------------- topology */
+function nodeShape(n, cls) {
+  const g = s("g", { class: cls || "" });
+  const stroke = "var(--ink)";
+  if (n.type === "router") g.append(s("circle", { r: 15, fill: "#fff", stroke, "stroke-width": 1.6 }),
+    s("path", { d: "M-7 0H7M0 -7V7", stroke, "stroke-width": 1.4 }));
+  else if (n.type === "firewall") g.append(s("rect", { x: -17, y: -12, width: 34, height: 24, rx: 2, fill: "#fff", stroke, "stroke-width": 1.6 }),
+    s("path", { d: "M-17 0H17M-6 -12V0M6 0V12", stroke, "stroke-width": 1.2 }));
+  else if (n.type === "internet") g.append(s("ellipse", { rx: 22, ry: 13, fill: "#fff", stroke, "stroke-width": 1.6, "stroke-dasharray": "4 3" }));
+  else g.append(s("rect", { x: -15, y: -11, width: 30, height: 22, rx: 3, fill: "#fff", stroke, "stroke-width": 1.6 }),
+    n.type === "server" ? s("path", { d: "M-9 -3H9M-9 3H9", stroke, "stroke-width": 1.2 }) : s("path", { d: "M-6 5H6", stroke, "stroke-width": 1.2 }));
+  return g;
+}
+
+function topologyView(topo, opts) {
+  const W = 760, H = 430, pad = 56;
+  const pos = {};
+  for (const n of topo.nodes) pos[n.id] = { x: pad + n.x * (W - 2 * pad), y: pad + n.y * (H - 2 * pad) };
+  const svg = s("svg", { class: "topo", viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": opts.aria });
+  const pair = opts.pair;
+  const bPath = pair && pair.before ? pair.before.path : [];
+  const aPath = pair && pair.after ? pair.after.path : [];
+  const mode = opts.mode;
+
+  const visible = topo.links.filter((l) => mode === "before" ? l.status !== "added" : mode === "after" ? l.status !== "removed" : true);
+  const line = (a, b, attrs) => s("line", { x1: pos[a].x, y1: pos[a].y, x2: pos[b].x, y2: pos[b].y, "stroke-linecap": "round", ...attrs });
+
+  for (const l of visible) {
+    let attrs = { stroke: "#b8c2cc", "stroke-width": 1.6 };
+    if (mode === "changes" && l.status === "removed") attrs = { stroke: "var(--brick)", "stroke-width": 1.8, "stroke-dasharray": "6 5" };
+    if (mode === "changes" && l.status === "added") attrs = { stroke: "var(--jade)", "stroke-width": 2.4 };
+    svg.append(line(l.source, l.destination, attrs));
+  }
+  const bE = edgesOf(bPath), aE = edgesOf(aPath);
+  const overlay = (set, attrs) => {
+    for (const key of set) { const [a, b] = key.split("|"); if (pos[a] && pos[b]) svg.append(line(a, b, attrs)); }
+  };
+  if (mode === "before") overlay(bE, { stroke: "var(--ink)", "stroke-width": 4 });
+  else if (mode === "after") overlay(aE, { stroke: "var(--ink)", "stroke-width": 4 });
+  else {
+    overlay(new Set([...bE].filter((k) => aE.has(k))), { stroke: "var(--ink)", "stroke-width": 4 });
+    overlay(new Set([...bE].filter((k) => !aE.has(k))), { stroke: "var(--brick)", "stroke-width": 4, "stroke-dasharray": "7 5" });
+    overlay(new Set([...aE].filter((k) => !bE.has(k))), { stroke: "var(--jade)", "stroke-width": 4 });
+  }
+
+  const goneNodes = new Set(bPath.filter((n) => !aPath.includes(n)));
+  const newNodes = new Set(aPath.filter((n) => !bPath.includes(n)));
+  for (const n of topo.nodes) {
+    const p = pos[n.id];
+    const g = s("g", { transform: `translate(${p.x} ${p.y})` });
+    if (mode === "changes" && goneNodes.has(n.id)) g.append(s("circle", { r: 26, fill: "none", stroke: "var(--brick)", "stroke-width": 2, "stroke-dasharray": "4 3" }));
+    if (mode === "changes" && newNodes.has(n.id)) g.append(s("circle", { r: 26, fill: "none", stroke: "var(--jade)", "stroke-width": 2 }));
+    g.append(nodeShape(n));
+    g.append(s("text", { y: 30, "text-anchor": "middle", "font-size": 13, "font-weight": 600 }, n.label || n.id));
+    if (n.ip) g.append(s("text", { y: 42, "text-anchor": "middle", class: "ip" }, n.ip));
+    svg.append(g);
+  }
+  const stopFor = (t) => (t && t.status !== "DELIVERED") ? t.path[t.path.length - 1] : null;
+  const stops = mode === "before" ? [stopFor(pair && pair.before)] : [stopFor(pair && pair.after)];
+  for (const id of stops) if (id && pos[id]) {
+    const p = pos[id];
+    svg.append(s("g", { transform: `translate(${p.x + 16} ${p.y - 16})` },
+      s("circle", { r: 9, fill: "var(--brick)" }), s("path", { d: "M-3.5 -3.5L3.5 3.5M3.5 -3.5L-3.5 3.5", stroke: "#fff", "stroke-width": 2, "stroke-linecap": "round" })));
+  }
+  return svg;
+}
+
+function legend(mode, hasPair) {
+  const items = [];
+  if (hasPair) {
+    if (mode === "changes") items.push(h("span", {}, h("i", { class: "keep" }), "path in both"), h("span", {}, h("i", { class: "rm" }), "path removed"), h("span", {}, h("i", { class: "add" }), "path added"));
+    else items.push(h("span", {}, h("i", { class: "keep" }), `path ${mode}`));
+    items.push(h("span", {}, h("svg", { width: 18, height: 18, viewBox: "-9 -9 18 18", "aria-hidden": "true" }), "traffic stops here"));
+  }
+  return h("div", { class: "legend" }, items);
+}
+
+function hopsRow(path, other, cls) {
+  const out = [];
+  path.forEach((n, i) => {
+    if (i) out.push(h("span", { class: "hop-sep", "aria-hidden": "true" }, "\u203a"));
+    out.push(h("span", { class: "hop" + (!other.includes(n) ? " " + cls : "") }, n));
+  });
+  return h("div", { class: "hops" }, out);
+}
+function pathDiff(pair) {
+  if (!pair) return null;
+  const wrap = h("div", { class: "pathdiff" });
+  const b = pair.before, a = pair.after;
+  const st = (t) => h("div", { class: "pd-status " + (t.status === "DELIVERED" ? "ok" : "fail") }, statusText(t.status, t.path));
+  if (!a) {
+    wrap.append(h("div", { class: "pd-line" }, h("span", { class: "pd-sign", "aria-hidden": "true" }, "\u2022"), hopsRow(b.path, [], ""), st(b)));
+    return wrap;
+  }
+  wrap.append(
+    h("div", { class: "pd-line before" }, h("span", { class: "pd-sign", "aria-label": "before" }, "\u2212"), hopsRow(b.path, a.path, "gone"), st(b)),
+    h("div", { class: "pd-line after" }, h("span", { class: "pd-sign", "aria-label": "after" }, "+"), hopsRow(a.path, b.path, "new"), st(a)));
+  return wrap;
+}
+
+/* pairs = the flows we can draw on the map */
+function buildPairs(report) {
+  const pairs = new Map();
+  for (const d of report.flow_deltas) pairs.set(d.key, { key: d.key, before: d.before, after: d.after });
+  for (const f of report.findings) {
+    if (f.flow_key && !pairs.has(f.flow_key)) {
+      pairs.set(f.flow_key, { key: f.flow_key,
+        before: { path: f.before_path, status: f.before_status }, after: { path: f.after_path, status: f.after_status } });
+    }
+  }
+  return pairs;
+}
+
+/* ---------------------------------------------------------------- rendering */
+function renderMap(slot, topo, pairs, mode, baselineMode) {
+  const pair = pairs.get(state.selectedKey) || null;
+  const box = h("div", { class: "mapbox" });
+  const head = h("div", { class: "map-head" });
+  head.append(h("h3", { class: "sec", style: "margin:0" }, baselineMode ? "Current network" : "Before and after"));
+  if (!baselineMode) {
+    head.append(h("div", { class: "seg", role: "group", "aria-label": "Map view" },
+      ["before", "after", "changes"].map((m) => h("button", { type: "button", "aria-pressed": String(state.mode === m),
+        onclick: () => { state.mode = m; renderMap(slot, topo, pairs, m, false); } }, m === "changes" ? "Changes" : sentence(m)))));
+  }
+  box.append(head);
+  if (pairs.size) {
+    const sel = h("select", { id: "flowSelect", "aria-label": "Flow shown on the map",
+      onchange: (e) => { state.selectedKey = e.target.value; renderMap(slot, topo, pairs, state.mode, baselineMode); } },
+      [...pairs.values()].map((p) => h("option", { value: p.key, selected: p.key === state.selectedKey }, keyLabel(p.key))));
+    box.append(h("div", { class: "flowpick" }, h("label", { for: "flowSelect" }, "Flow"), sel));
+  }
+  const effMode = baselineMode ? "before" : mode;
+  box.append(topologyView(topo, { mode: effMode, pair, aria: "Network topology" }));
+  box.append(legend(effMode, !!pair));
+  const pd = pathDiff(pair);
+  if (pd) box.append(pd);
+  slot.replaceChildren(box);
+}
+
+function severityLabel(sev) { return sentence(sev); }
+
+function findingCard(f, slotUpdate) {
+  const open = state.openFinding === f.id;
+  const bodyId = `fb-${f.id}`;
+  const card = h("div", { class: "finding" });
+  const head = h("button", { type: "button", class: "f-head", "aria-expanded": String(open), "aria-controls": bodyId },
+    h("span", { class: `sev ${f.severity}` }, severityLabel(f.severity)), h("span", { class: "f-title" }, f.title));
+  const body = h("div", { class: "f-body", id: bodyId, hidden: !open });
+  body.append(h("p", { class: "human" }, f.human));
+  body.append(h("ol", { class: "chain", "aria-label": "How the change leads to this problem" },
+    f.propagation.map((st) => h("li", { class: `k-${st.kind}` }, h("div", { class: "lbl" }, st.label),
+      st.detail ? h("div", { class: "det" }, st.detail) : null))));
+  body.append(h("p", { class: "tech" }, h("b", {}, "Technical detail. "), f.technical));
+  if (f.flow_key) body.append(h("button", { type: "button", class: "showmap", onclick: () => slotUpdate(f.flow_key) }, "Show this flow on the map"));
+  head.addEventListener("click", () => {
+    const now = head.getAttribute("aria-expanded") !== "true";
+    for (const b of document.querySelectorAll(".f-head")) { b.setAttribute("aria-expanded", "false"); b.parentElement.querySelector(".f-body").hidden = true; }
+    head.setAttribute("aria-expanded", String(now));
+    body.hidden = !now;
+    state.openFinding = now ? f.id : null;
+    if (now && f.flow_key) slotUpdate(f.flow_key);
+  });
+  card.append(head, body);
+  return card;
+}
+
+function renderReport(report) {
+  const main = $("#main");
+  const v = report.verdict, sm = report.summary, rk = report.risk;
+  const cls = v.decision === "NOT_RECOMMENDED" ? "bad" : v.decision === "REVIEW" ? "review" : "good";
+  const decisionText = { NOT_RECOMMENDED: "Not recommended", REVIEW: "Review before deploying", SAFE: "No problems found" }[v.decision];
+  const verdict = h("section", { class: `verdict ${cls}`, "aria-labelledby": "vh" },
+    h("div", { class: "decision" }, decisionText),
+    h("h2", { id: "vh" }, v.headline),
+    h("ul", { class: "changes-list" }, report.changes.map((c) => h("li", {}, `${c.index + 1}. ${c.description}`))),
+    h("dl", { class: "facts" },
+      fact("Flows affected", `${sm.affected_flows}`, ` of ${sm.declared_flows_checked}`),
+      fact("Flows broken", sm.broken_flows),
+      fact("Policy violations", sm.security_violations),
+      fact("Newly reachable pairs", sm.new_exposures),
+      h("div", {}, h("dt", {}, "Risk"), h("dd", {}, sentence(rk.level), h("small", {}, ` ${rk.score} of 100`)),
+        h("div", { class: `meter lvl-${rk.level.toLowerCase()}`, role: "presentation" }, h("i", { style: `width:${Math.min(100, rk.score)}%` })))));
+
+  const pairs = buildPairs(report);
+  const first = report.findings.find((f) => f.flow_key && pairs.has(f.flow_key));
+  state.selectedKey = first ? first.flow_key : (pairs.keys().next().value || null);
+  state.openFinding = report.findings.length ? report.findings[0].id : null;
+  state.mode = "changes";
+
+  const mapSlot = h("div", { id: "mapSlot" });
+  const updateMap = (key) => { if (key) state.selectedKey = key; renderMap(mapSlot, report.topology, pairs, state.mode, false); };
+  updateMap();
+
+  const findingsCol = h("div", {});
+  findingsCol.append(h("h3", { class: "sec" }, report.findings.length ? `Findings (${report.findings.length})` : "Findings"));
+  if (report.findings.length) findingsCol.append(...report.findings.map((f) => findingCard(f, updateMap)));
+  else findingsCol.append(h("p", { class: "muted" }, "Every declared flow and policy behaves as it did before this change."));
+  const cw = report.config_warnings;
+  if (cw.length) findingsCol.append(h("div", { class: "section" }, h("h3", { class: "sec" }, "Configuration warnings"),
+    h("ul", { style: "margin:0;padding-left:18px" }, cw.map((w) => h("li", {}, w)))));
+
+  const work = h("div", { class: "work" }, findingsCol, h("div", { class: "map-col" }, mapSlot));
+  main.replaceChildren(verdict, work);
+
+  if (report.rollback) {
+    const rb = report.rollback;
+    main.append(h("section", { class: "section" }, h("h3", { class: "sec" }, "Recommended rollback"),
+      h("div", { class: "rollback" },
+        h("p", {}, rb.revert.length === report.changes.length ? "Do not apply this change." : "Do not apply these parts of the change:"),
+        h("ul", {}, rb.revert.map((r) => h("li", {}, `Change ${r.index + 1}: ${r.description}`))),
+        h("p", { style: "margin-top:10px" }, `Without ${rb.revert.length === 1 ? "it" : "them"} the verdict becomes ${rb.if_reverted.decision === "SAFE" ? "safe" : rb.if_reverted.decision.toLowerCase().replace("_", " ")}, with ${rb.if_reverted.remaining_problems} remaining problem${rb.if_reverted.remaining_problems === 1 ? "" : "s"}.`),
+        h("p", { class: "note" }, rb.note))));
+  }
+
+  main.append(flowTable(report), policyTable(report), actions(report));
+}
+function fact(label, value, small) { return h("div", {}, h("dt", {}, label), h("dd", {}, String(value), small ? h("small", {}, small) : null)); }
+
+function flowTable(report) {
+  const sec = h("section", { class: "section" }, h("h3", { class: "sec" }, "Declared flows that change"));
+  if (!report.flow_deltas.length) { sec.append(h("p", { class: "muted" }, `None of the ${report.summary.declared_flows_checked} declared flows change.`)); return sec; }
+  const cell = (t) => h("td", {}, h("span", { class: t.status === "DELIVERED" ? "st-ok" : "st-bad" }, sentence(statusText(t.status, t.path))), h("span", { class: "mono" }, t.path.join(" > ")));
+  sec.append(h("div", { class: "tablewrap" }, h("table", {},
+    h("thead", {}, h("tr", {}, h("th", {}, "Flow"), h("th", {}, "Before"), h("th", {}, "After"))),
+    h("tbody", {}, report.flow_deltas.map((d) => h("tr", {}, h("td", {}, keyLabel(d.key), d.policy_ids.length ? h("span", { class: "mono" }, `policy ${d.policy_ids.join(", ")}`) : null), cell(d.before), cell(d.after)))))));
+  sec.append(h("p", { class: "note" }, `${report.summary.unchanged_flows} other declared flow${report.summary.unchanged_flows === 1 ? "" : "s"} behave exactly as before.`));
+  return sec;
+}
+function policyTable(report) {
+  const sec = h("section", { class: "section" }, h("h3", { class: "sec" }, "Policies"));
+  const label = { ok: ["Holds", "st-ok"], new_violation: ["Newly violated", "st-bad"], resolved: ["Now holds", "st-ok"], preexisting_violation: ["Already violated before the change", "st-warn"], added: ["Added, holds", "st-ok"], removed: ["Removed", "st-warn"] };
+  sec.append(h("div", { class: "tablewrap" }, h("table", {},
+    h("thead", {}, h("tr", {}, h("th", {}, "Policy"), h("th", {}, "Requirement"), h("th", {}, "After the change"))),
+    h("tbody", {}, report.policies.map((p) => { const [t, c] = label[p.status] || [p.status, ""];
+      return h("tr", {}, h("td", {}, p.id), h("td", {}, p.description), h("td", {}, h("span", { class: c }, t), p.after && !p.after.satisfied ? h("span", { class: "mono" }, p.after.reason) : null)); })))));
+  return sec;
+}
+function actions(report) {
+  const dl = (name, text, type) => { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); };
+  return h("div", { class: "actions" },
+    h("button", { type: "button", onclick: () => dl("netguardx-report.md", report.report_markdown, "text/markdown") }, "Download report (Markdown)"),
+    h("button", { type: "button", onclick: () => dl("netguardx-report.json", JSON.stringify(report, null, 2), "application/json") }, "Download full result (JSON)"));
+}
+
+function renderBaseline(b) {
+  const main = $("#main");
+  const bad = b.summary.policies_violated;
+  const cls = bad ? "bad" : "good";
+  const headline = bad ? `${bad} of ${b.summary.policies} polic${b.summary.policies === 1 ? "y is" : "ies are"} already violated today` :
+    `All ${b.summary.policies} polic${b.summary.policies === 1 ? "y holds" : "ies hold"} today`;
+  const verdict = h("section", { class: `verdict ${cls}` },
+    h("div", { class: "decision" }, "Current state"),
+    h("h2", {}, headline),
+    h("p", { class: "muted", style: "margin-top:8px;max-width:64ch" }, "Pick or write a change on the left, then choose Analyze change to see what it does to these flows and policies before anything is deployed."));
+  const pairs = new Map();
+  for (const t of b.traces) pairs.set(t.key, { key: t.key, before: t, after: null });
+  state.selectedKey = (b.traces.find((t) => t.status === "DELIVERED") || b.traces[0] || {}).key || null;
+  const slot = h("div", { id: "mapSlot" });
+  renderMap(slot, b.topology, pairs, "before", true);
+  const flows = h("div", {}, h("h3", { class: "sec" }, "Declared flows today"),
+    h("div", { class: "tablewrap" }, h("table", {}, h("thead", {}, h("tr", {}, h("th", {}, "Flow"), h("th", {}, "Result"))),
+      h("tbody", {}, b.traces.map((t) => h("tr", {}, h("td", {}, h("button", { type: "button", style: "border:0;padding:0;background:none;text-align:left;text-decoration:underline;cursor:pointer", onclick: () => { state.selectedKey = t.key; renderMap(slot, b.topology, pairs, "before", true); } }, keyLabel(t.key))),
+        h("td", {}, h("span", { class: t.status === "DELIVERED" ? "st-ok" : "st-bad" }, sentence(statusText(t.status, t.path))), h("span", { class: "mono" }, t.path.join(" > ")))))))));
+  main.replaceChildren(verdict, h("div", { class: "work" }, flows, h("div", { class: "map-col" }, slot)));
+}
+
+/* --------------------------------------------------------------------- flow */
+function setError(msg) { $("#err").textContent = msg || ""; }
+function readWeights() {
+  const w = {};
+  for (const [k] of WEIGHT_FIELDS) { const v = parseFloat($(`#w-${k}`).value); w[k] = Number.isFinite(v) && v >= 0 ? v : DEFAULT_WEIGHTS[k]; }
+  return w;
+}
+async function loadNetwork(net) {
+  setError("");
+  state.network = net;
+  $("#netJson").value = JSON.stringify(net, null, 2);
+  $("#netMeta").textContent = `${net.nodes.length} devices, ${net.links.length} links, ${net.routes.length} routes, ${net.policies.length} policies.`;
+  try {
+    state.baseline = await api("/api/verify", { network: net });
+    state.report = null;
+    renderBaseline(state.baseline);
+  } catch (e) {
+    $("#main").replaceChildren(h("p", { class: "error" }, `Could not check this network: ${e.message}`));
+  }
+}
+function pickPreset(c, btn) {
+  state.presetId = c.id;
+  for (const b of document.querySelectorAll("#presets button")) b.setAttribute("aria-pressed", String(b === btn));
+  $("#changeJson").value = JSON.stringify(c.changes, null, 2);
+  $("#presetNote").textContent = c.description || "";
+  setError("");
+}
+async function runAnalysis() {
+  setError("");
+  let changes;
+  try { changes = JSON.parse($("#changeJson").value); } catch (e) { setError(`The change is not valid JSON: ${e.message}`); return; }
+  if (!Array.isArray(changes)) changes = changes.changes || [changes];
+  if (!changes.length) { setError("Add at least one change, or pick an example."); return; }
+  const btn = $("#run"); btn.disabled = true; btn.textContent = "Analyzing";
+  try {
+    const report = await api("/api/simulate", { network: state.network, changes, weights: readWeights() });
+    state.report = report;
+    renderReport(report);
+    $("#main").scrollIntoView({ block: "start" });
+  } catch (e) {
+    setError(`Analysis failed: ${e.message}`);
+  } finally { btn.disabled = false; btn.textContent = "Analyze change"; }
+}
+async function draftFromText() {
+  const text = $("#nl").value.trim();
+  const note = $("#nlNote");
+  if (!text) { note.textContent = "Type a change or a requirement first."; return; }
+  try {
+    const r = await api("/api/interpret", { text, network: state.network });
+    const out = [...r.changes, ...r.policies.map((p) => ({ operation: "ADD_POLICY", policy: p }))];
+    if (out.length) $("#changeJson").value = JSON.stringify(out, null, 2);
+    const parts = [];
+    if (r.changes.length) parts.push(`${r.changes.length} change${r.changes.length > 1 ? "s" : ""}`);
+    if (r.policies.length) parts.push(`${r.policies.length} polic${r.policies.length > 1 ? "ies" : "y"} (added as ADD_POLICY changes)`);
+    let msg = parts.length ? `Drafted ${parts.join(" and ")}. Check the JSON before you analyze.` : "Nothing recognised.";
+    if (r.unparsed.length) msg += ` Not understood: ${r.unparsed.map((u) => `"${u.text}" (${u.reason})`).join("; ")}.`;
+    note.textContent = msg;
+  } catch (e) { note.textContent = `Could not read that: ${e.message}`; }
+}
+
+async function init() {
+  const wbox = $("#weights");
+  for (const [k, label] of WEIGHT_FIELDS) {
+    wbox.append(h("label", { for: `w-${k}` }, label), h("input", { id: `w-${k}`, type: "number", min: "0", step: "1", value: DEFAULT_WEIGHTS[k] }));
+  }
+  $("#run").addEventListener("click", runAnalysis);
+  $("#draft").addEventListener("click", draftFromText);
+  $("#nl").addEventListener("keydown", (e) => { if (e.key === "Enter") draftFromText(); });
+  $("#applyNet").addEventListener("click", async () => {
+    try { await loadNetwork(JSON.parse($("#netJson").value)); } catch (e) { setError(`The network is not valid JSON: ${e.message}`); }
+  });
+  $("#netFile").addEventListener("change", async (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    try { await loadNetwork(JSON.parse(await f.text())); } catch (err) { setError(`Could not read ${f.name}: ${err.message}`); }
+  });
+  try {
+    state.examples = await api("/api/examples");
+  } catch (e) { $("#main").replaceChildren(h("p", { class: "error" }, `Could not load examples: ${e.message}`)); return; }
+  const sel = $("#netSelect");
+  sel.replaceChildren(...state.examples.networks.map((n) => h("option", { value: n.id }, n.title)));
+  sel.addEventListener("change", () => { const n = state.examples.networks.find((x) => x.id === sel.value); if (n) loadNetwork(n.network); });
+  const presets = $("#presets");
+  presets.append(...state.examples.changes.map((c) => { const b = h("button", { type: "button", "aria-pressed": "false" }, c.title); b.addEventListener("click", () => pickPreset(c, b)); return b; }));
+  await loadNetwork(state.examples.networks[0].network);
+  pickPreset(state.examples.changes[0], presets.firstChild);
+}
+init();
+</script>
+</body>
+</html>

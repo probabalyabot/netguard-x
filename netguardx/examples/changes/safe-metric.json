@@ -1,0 +1,7 @@
+{
+  "title": "Tune the default route metric on R1",
+  "description": "Change a metric that no declared flow depends on.",
+  "changes": [
+    {"operation": "CHANGE_METRIC", "router": "R1", "destination": "0.0.0.0/0", "new_metric": 50}
+  ]
+}

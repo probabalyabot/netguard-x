@@ -1,0 +1,7 @@
+{
+  "title": "Decommission the R1-R2 link",
+  "description": "Remove the link but leave R1's static route pointing across it.",
+  "changes": [
+    {"operation": "DELETE_LINK", "node_a": "R1", "node_b": "R2"}
+  ]
+}
