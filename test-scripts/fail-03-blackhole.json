@@ -1,0 +1,8 @@
+{
+  "title": "FAIL: delete the firewall return route (blackhole)",
+  "expected": "NOT_RECOMMENDED",
+  "description": "The firewall loses its only route out. Nightly backups from DB reach the firewall and are silently discarded there.",
+  "changes": [
+    {"operation": "DELETE_ROUTE", "router": "FW", "destination": "0.0.0.0/0"}
+  ]
+}

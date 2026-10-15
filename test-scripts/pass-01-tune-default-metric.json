@@ -1,0 +1,8 @@
+{
+  "title": "PASS: tune the default route metric on R1",
+  "expected": "SAFE",
+  "description": "Changes the metric of a route no declared flow depends on. Nothing behaves differently.",
+  "changes": [
+    {"operation": "CHANGE_METRIC", "router": "R1", "destination": "0.0.0.0/0", "new_metric": 50}
+  ]
+}

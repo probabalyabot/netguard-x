@@ -1,4 +1,4 @@
-"""Gatekeeper: the stateful loop between a command source (an LLM agent) and the network.
+"""Gatekeeper: the loop between a command source (an LLM agent) and the network.
 
 The gatekeeper owns the live network model.  Every proposed command is verified against that
 model before anything changes:

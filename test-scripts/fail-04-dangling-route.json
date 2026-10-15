@@ -1,0 +1,8 @@
+{
+  "title": "FAIL: decommission the R1-R2 link (dangling route)",
+  "expected": "NOT_RECOMMENDED",
+  "description": "The cable is removed but R1 still has routes pointing at R2. Traffic to the database and backup server stops at R1.",
+  "changes": [
+    {"operation": "DELETE_LINK", "node_a": "R1", "node_b": "R2"}
+  ]
+}

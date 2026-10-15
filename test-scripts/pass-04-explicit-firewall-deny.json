@@ -1,0 +1,8 @@
+{
+  "title": "PASS: make the firewall deny for users explicit",
+  "expected": "SAFE",
+  "description": "Adds an explicit DENY USER -> DB rule. The firewall already denied this by default, so the outcome is unchanged: hardening with no side effects.",
+  "changes": [
+    {"operation": "ADD_ACL_RULE", "rule": {"node": "FW", "source": "USER", "destination": "DB", "protocol": "TCP", "port": 5432, "action": "DENY"}}
+  ]
+}

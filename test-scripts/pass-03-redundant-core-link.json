@@ -1,0 +1,8 @@
+{
+  "title": "PASS: cable a redundant link between R2 and R3",
+  "expected": "SAFE",
+  "description": "A new physical link between two routers. No route uses it yet, so no traffic moves.",
+  "changes": [
+    {"operation": "ADD_LINK", "node_a": "R2", "node_b": "R3"}
+  ]
+}

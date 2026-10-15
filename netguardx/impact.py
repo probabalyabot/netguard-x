@@ -159,6 +159,8 @@ def _attribute(effects: list[Effect], div: Optional[Divergence], dst_ip: Optiona
         return None
     nexts = {div.before_next, div.after_next} - {None}
     ip = ipaddress.ip_address(dst_ip) if dst_ip else None
+    # the prefixes of the routes actually used at the divergence, before and after
+    used = {h.route.prefix for h in (div.before_hop, div.after_hop) if h is not None and h.route is not None}
     scored: list[tuple[int, int]] = []
     for e in effects:
         score = 0
@@ -166,7 +168,7 @@ def _attribute(effects: list[Effect], div: Optional[Divergence], dst_ip: Optiona
             covers = True
             if ip is not None and e.prefix:
                 covers = ip in ipaddress.ip_network(e.prefix)
-            score = 3 if covers else 1
+            score = 4 if e.prefix in used else 3 if covers else 1
         elif e.kind == "link" and div.node in e.nodes:
             score = 3 if (nexts & set(e.nodes)) else 1
         elif e.kind == "acl" and div.node in e.nodes:

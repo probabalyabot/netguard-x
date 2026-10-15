@@ -1,0 +1,9 @@
+{
+  "title": "FAIL: a batch with one bad change (partial rollback)",
+  "expected": "NOT_RECOMMENDED",
+  "description": "Two changes proposed together: a harmless metric tweak and the firewall bypass. NetGuard-X blames only the second and confirms that dropping it makes the batch safe.",
+  "changes": [
+    {"operation": "CHANGE_METRIC", "router": "R1", "destination": "0.0.0.0/0", "new_metric": 50},
+    {"operation": "MODIFY_ROUTE", "router": "R1", "destination": "10.0.5.0/24", "old_next_hop": "R2", "new_next_hop": "R3"}
+  ]
+}

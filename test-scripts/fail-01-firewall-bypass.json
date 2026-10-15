@@ -1,0 +1,8 @@
+{
+  "title": "FAIL: send database traffic via R3 (firewall bypass)",
+  "expected": "NOT_RECOMMENDED",
+  "description": "R1 sends the database subnet to R3, which is cabled straight to DB. APP still reaches DB, so a ping test passes, but the firewall is skipped: the internet and user machines can now reach the database.",
+  "changes": [
+    {"operation": "MODIFY_ROUTE", "router": "R1", "destination": "10.0.5.0/24", "old_next_hop": "R2", "new_next_hop": "R3"}
+  ]
+}

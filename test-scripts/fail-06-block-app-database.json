@@ -1,0 +1,8 @@
+{
+  "title": "FAIL: block the app from the database",
+  "expected": "NOT_RECOMMENDED",
+  "description": "A DENY rule placed above the existing allow. The app can no longer query the database, a criticality-5 flow.",
+  "changes": [
+    {"operation": "ADD_ACL_RULE", "rule": {"node": "FW", "source": "APP", "destination": "DB", "protocol": "TCP", "port": 5432, "action": "DENY"}, "position": 0}
+  ]
+}

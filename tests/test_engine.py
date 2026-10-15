@@ -164,6 +164,14 @@ def test_multi_change_attribution_and_partial_rollback(net):
     assert [x["index"] for x in r.rollback["revert"]] == [0]  # the harmless metric change stays
 
 
+def test_attribution_does_not_depend_on_change_order(net):
+    # both are route changes on R1 whose prefixes cover DB; only the second is used by the traffic
+    r = analyze(net, load_change("safe-metric") + load_change("route-via-r3"))
+    assert {f.root_change for f in r.findings} == {1}
+    assert [x["index"] for x in r.rollback["revert"]] == [1]
+    assert r.rollback["if_reverted"] == {"decision": "SAFE", "remaining_problems": 0}
+
+
 def test_risk_weights_are_configurable(net):
     from netguardx import AnalysisOptions
 

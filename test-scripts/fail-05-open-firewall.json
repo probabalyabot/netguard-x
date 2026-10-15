@@ -1,0 +1,8 @@
+{
+  "title": "FAIL: temporarily allow all traffic through the firewall",
+  "expected": "NOT_RECOMMENDED",
+  "description": "A broad ALLOW rule at the top of the firewall ACL. No route changes, yet forbidden traffic to the database gets through.",
+  "changes": [
+    {"operation": "ADD_ACL_RULE", "rule": {"node": "FW", "source": "any", "destination": "any", "action": "ALLOW"}, "position": 0}
+  ]
+}

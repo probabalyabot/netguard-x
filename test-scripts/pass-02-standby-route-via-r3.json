@@ -1,0 +1,8 @@
+{
+  "title": "PASS: add a standby route to the database via R3",
+  "expected": "SAFE",
+  "description": "A second route to 10.0.5.0/24 with a worse metric (50 vs 10). It stays unused, so traffic still goes through the firewall.",
+  "changes": [
+    {"operation": "ADD_ROUTE", "router": "R1", "destination": "10.0.5.0/24", "next_hop": "R3", "metric": 50}
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "title": "REVIEW: cable the firewall straight to the backup server",
+  "expected": "REVIEW",
+  "description": "Backup traffic from DB takes a shorter path (FW -> BACKUP instead of FW -> R2 -> BACKUP). Still delivered and still allowed, but a person should look at the path change.",
+  "changes": [
+    {"operation": "ADD_LINK", "node_a": "FW", "node_b": "BACKUP"}
+  ]
+}
