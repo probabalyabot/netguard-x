@@ -1,0 +1,65 @@
+@import "@fontsource/ibm-plex-sans/400.css";
+@import "@fontsource/ibm-plex-sans/500.css";
+@import "@fontsource/ibm-plex-sans/600.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+@import "@xyflow/react/dist/style.css";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* surfaces */
+  --ink: 14 17 22;          /* app background */
+  --panel: 20 25 32;        /* panels */
+  --raised: 27 34 43;       /* inputs, hovered rows */
+  --line: 38 48 62;         /* hairlines */
+  --line-strong: 58 71 90;
+  /* text */
+  --fg: 221 229 238;
+  --muted: 135 149 168;
+  --faint: 92 105 124;
+  /* semantic: network = cyan, verified safe = green, warning = amber, unsafe = red */
+  --net: 60 200 232;
+  --safe: 76 195 138;
+  --warn: 230 162 60;
+  --bad: 239 91 91;
+}
+
+html, body, #root { height: 100%; }
+body {
+  @apply bg-ink text-fg font-sans text-base antialiased;
+  font-feature-settings: "tnum" 1, "cv11" 1;
+}
+* { scrollbar-width: thin; scrollbar-color: rgb(var(--line-strong)) transparent; }
+:focus-visible { outline: 2px solid rgb(var(--net)); outline-offset: 2px; border-radius: 3px; }
+::selection { background: rgb(var(--net) / 0.3); }
+code, .mono { @apply font-mono text-[12.5px]; }
+
+@layer components {
+  .panel { @apply bg-panel border border-line rounded-lg; }
+  .panel-h { @apply flex items-center justify-between gap-3 px-4 py-3 border-b border-line; }
+  .panel-title { @apply text-sm font-semibold text-fg; }
+  .field { @apply w-full bg-raised border border-line rounded px-2.5 py-1.5 text-sm text-fg placeholder:text-faint focus:border-net focus:outline-none; }
+  .label { @apply block text-xs text-muted mb-1; }
+  .btn { @apply inline-flex items-center justify-center gap-2 rounded px-3 py-1.5 text-sm font-medium border border-line-strong bg-raised text-fg hover:border-muted disabled:opacity-45 disabled:pointer-events-none transition-colors; }
+  .btn-primary { @apply border-net/60 bg-net/15 text-net hover:bg-net/25 hover:border-net; }
+  .btn-ghost { @apply border-transparent bg-transparent text-muted hover:text-fg hover:bg-raised; }
+  .chip { @apply inline-flex items-center gap-1.5 rounded px-1.5 py-0.5 text-xs font-medium border; }
+  .th { @apply text-left text-xs font-medium text-muted px-3 py-2 border-b border-line whitespace-nowrap; }
+  .td { @apply px-3 py-2 border-b border-line/60 align-top; }
+}
+
+/* React Flow, restyled to the app's tokens */
+.react-flow { --xy-background-color: transparent; --xy-edge-stroke: rgb(var(--line-strong)); }
+.react-flow__controls { @apply border border-line rounded overflow-hidden shadow-none; }
+.react-flow__controls-button { background: rgb(var(--panel)) !important; border-bottom: 1px solid rgb(var(--line)) !important; fill: rgb(var(--muted)) !important; }
+.react-flow__controls-button:hover { background: rgb(var(--raised)) !important; }
+.react-flow__minimap { background: rgb(var(--panel)) !important; border: 1px solid rgb(var(--line)); border-radius: 6px; }
+
+@keyframes dash { to { stroke-dashoffset: -24; } }
+.path-flow { stroke-dasharray: 8 6; animation: dash 1.1s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .path-flow { animation: none; } }
+
+.react-flow__attribution { background: transparent !important; color: rgb(var(--faint)) !important; font-size: 10px; }
+.react-flow__attribution a { color: inherit !important; }

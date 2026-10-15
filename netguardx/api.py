@@ -8,7 +8,7 @@ from typing import Optional
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from . import __version__
 from .changes import ChangeError
@@ -21,6 +21,8 @@ from .verify import verify_network
 
 HERE = Path(__file__).parent
 EXAMPLES = HERE / "examples"
+EVAL_MAX_SITES = 8
+FRONTEND_DIST = HERE.parent / "frontend" / "dist"
 
 app = FastAPI(title="NetGuard-X", version=__version__,
               description="Predictive, explainable verification of network configuration changes.")
@@ -36,6 +38,22 @@ class SimulateRequest(BaseModel):
     weights: Optional[RiskWeights] = None
     probes: bool = True
     probe_limit: int = Field(2000, ge=0, le=20000)
+
+
+class EvalRequest(BaseModel):
+    """Bounded so a single request stays interactive. The CLI has no such limits."""
+    sites: list[int] = Field(default_factory=lambda: [2, 4], min_length=1, max_length=4)
+    commands: int = Field(30, ge=5, le=100)
+    seed: int = 0
+    fault_rate: float = Field(0.3, ge=0, le=1)
+    probes: bool = True
+
+    @field_validator("sites")
+    @classmethod
+    def _sites(cls, v: list[int]) -> list[int]:
+        if any(not 1 <= s <= EVAL_MAX_SITES for s in v):
+            raise ValueError(f"sites must be between 1 and {EVAL_MAX_SITES} in the API (the CLI allows more)")
+        return v
 
 
 class InterpretRequest(BaseModel):
@@ -109,6 +127,20 @@ def interpret_text(req: InterpretRequest):
     return interpret(req.text, req.network)
 
 
+@app.post("/api/eval/run")
+def eval_run(req: EvalRequest):
+    """Run the evaluation harness (netguardx.eval) and return its result unchanged:
+    config, one entry per network size with per-arm summaries, and per-step rows."""
+    from .eval.run import run_eval
+    return run_eval(req.sites, req.commands, req.seed, req.fault_rate, probes=req.probes)
+
+
 @app.get("/")
 def index():
     return FileResponse(HERE / "static" / "index.html")
+
+
+# Optional: serve the built React app (frontend/dist) at /app when it exists.
+if FRONTEND_DIST.is_dir():
+    from fastapi.staticfiles import StaticFiles
+    app.mount("/app", StaticFiles(directory=FRONTEND_DIST, html=True), name="frontend")

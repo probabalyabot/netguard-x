@@ -1,0 +1,191 @@
+{
+  "config": {
+    "sites": [
+      2,
+      4
+    ],
+    "commands": 30,
+    "seed": 1,
+    "fault_rate": 0.3,
+    "probes": true,
+    "arms": [
+      "none",
+      "lint",
+      "reachability",
+      "full",
+      "incremental"
+    ]
+  },
+  "runs": [
+    {
+      "sites": 2,
+      "nodes": 14,
+      "links": 15,
+      "routes": 18,
+      "flows": 8,
+      "policies": 8,
+      "arms": {
+        "none": {
+          "commands": 30,
+          "executed": 26,
+          "rejected": 0,
+          "held": 0,
+          "invalid": 4,
+          "unsafe_executed": 6,
+          "safe_rejected": 0,
+          "unhealthy_steps": 24,
+          "mismatches": 0,
+          "resim_share": null,
+          "check_ms_mean": 0.0,
+          "check_ms_p50": 0.0,
+          "check_ms_p95": 0.0
+        },
+        "lint": {
+          "commands": 30,
+          "executed": 26,
+          "rejected": 0,
+          "held": 0,
+          "invalid": 4,
+          "unsafe_executed": 6,
+          "safe_rejected": 0,
+          "unhealthy_steps": 24,
+          "mismatches": 0,
+          "resim_share": null,
+          "check_ms_mean": 1.049,
+          "check_ms_p50": 1.053,
+          "check_ms_p95": 1.28
+        },
+        "reachability": {
+          "commands": 30,
+          "executed": 22,
+          "rejected": 5,
+          "held": 0,
+          "invalid": 3,
+          "unsafe_executed": 1,
+          "safe_rejected": 0,
+          "unhealthy_steps": 10,
+          "mismatches": 0,
+          "resim_share": null,
+          "check_ms_mean": 1.749,
+          "check_ms_p50": 1.722,
+          "check_ms_p95": 1.989
+        },
+        "full": {
+          "commands": 30,
+          "executed": 20,
+          "rejected": 7,
+          "held": 0,
+          "invalid": 3,
+          "unsafe_executed": 0,
+          "safe_rejected": 0,
+          "unhealthy_steps": 0,
+          "mismatches": 0,
+          "resim_share": 1.0,
+          "check_ms_mean": 6.795,
+          "check_ms_p50": 6.041,
+          "check_ms_p95": 8.025
+        },
+        "incremental": {
+          "commands": 30,
+          "executed": 20,
+          "rejected": 7,
+          "held": 0,
+          "invalid": 3,
+          "unsafe_executed": 0,
+          "safe_rejected": 0,
+          "unhealthy_steps": 0,
+          "mismatches": 0,
+          "resim_share": 0.3241,
+          "check_ms_mean": 1.513,
+          "check_ms_p50": 1.257,
+          "check_ms_p95": 2.56
+        }
+      }
+    },
+    {
+      "sites": 4,
+      "nodes": 26,
+      "links": 29,
+      "routes": 34,
+      "flows": 16,
+      "policies": 16,
+      "arms": {
+        "none": {
+          "commands": 30,
+          "executed": 29,
+          "rejected": 0,
+          "held": 0,
+          "invalid": 1,
+          "unsafe_executed": 4,
+          "safe_rejected": 0,
+          "unhealthy_steps": 11,
+          "mismatches": 0,
+          "resim_share": null,
+          "check_ms_mean": 0.0,
+          "check_ms_p50": 0.0,
+          "check_ms_p95": 0.0
+        },
+        "lint": {
+          "commands": 30,
+          "executed": 29,
+          "rejected": 0,
+          "held": 0,
+          "invalid": 1,
+          "unsafe_executed": 4,
+          "safe_rejected": 0,
+          "unhealthy_steps": 11,
+          "mismatches": 0,
+          "resim_share": null,
+          "check_ms_mean": 2.041,
+          "check_ms_p50": 1.891,
+          "check_ms_p95": 2.627
+        },
+        "reachability": {
+          "commands": 30,
+          "executed": 27,
+          "rejected": 2,
+          "held": 0,
+          "invalid": 1,
+          "unsafe_executed": 2,
+          "safe_rejected": 0,
+          "unhealthy_steps": 11,
+          "mismatches": 0,
+          "resim_share": null,
+          "check_ms_mean": 3.892,
+          "check_ms_p50": 3.841,
+          "check_ms_p95": 4.14
+        },
+        "full": {
+          "commands": 30,
+          "executed": 25,
+          "rejected": 4,
+          "held": 1,
+          "invalid": 1,
+          "unsafe_executed": 0,
+          "safe_rejected": 0,
+          "unhealthy_steps": 0,
+          "mismatches": 0,
+          "resim_share": 1.0,
+          "check_ms_mean": 25.592,
+          "check_ms_p50": 23.226,
+          "check_ms_p95": 34.518
+        },
+        "incremental": {
+          "commands": 30,
+          "executed": 25,
+          "rejected": 4,
+          "held": 1,
+          "invalid": 1,
+          "unsafe_executed": 0,
+          "safe_rejected": 0,
+          "unhealthy_steps": 0,
+          "mismatches": 0,
+          "resim_share": 0.1544,
+          "check_ms_mean": 4.278,
+          "check_ms_p50": 3.506,
+          "check_ms_p95": 11.994
+        }
+      }
+    }
+  ]
+}

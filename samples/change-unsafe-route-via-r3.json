@@ -1,0 +1,9 @@
+[
+  {
+    "operation": "MODIFY_ROUTE",
+    "router": "R1",
+    "destination": "10.0.5.0/24",
+    "old_next_hop": "R2",
+    "new_next_hop": "R3"
+  }
+]

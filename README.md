@@ -135,8 +135,10 @@ let through and what each check costs.
 | Markdown report | `report.py` |
 | FastAPI service and single-file web UI | `api.py`, `static/index.html` |
 
+A React frontend lives in `frontend/` (see `frontend/README.md`). The original single-file UI at `/` still works.
+
 API: `GET /api/health`, `GET /api/examples`, `POST /api/verify`, `POST /api/simulate`,
-`POST /api/diff`, `POST /api/interpret`.
+`POST /api/diff`, `POST /api/interpret`, `POST /api/eval/run`.
 
 ## Example scenarios (`netguardx/examples/changes/`)
 

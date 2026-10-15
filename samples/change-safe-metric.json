@@ -1,0 +1,8 @@
+[
+  {
+    "operation": "CHANGE_METRIC",
+    "router": "R1",
+    "destination": "0.0.0.0/0",
+    "new_metric": 50
+  }
+]

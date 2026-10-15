@@ -82,3 +82,13 @@ def test_verify_returns_topology(net):
     r = client.post("/api/verify", json={"network": net.model_dump()})
     assert r.status_code == 200
     assert r.json()["topology"]["nodes"]
+
+
+def test_eval_run_is_bounded_and_returns_harness_result():
+    r = client.post("/api/eval/run", json={"sites": [2], "commands": 5, "seed": 1})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["config"]["commands"] == 5 and body["runs"][0]["sites"] == 2
+    assert set(body["runs"][0]["arms"]) == {"none", "lint", "reachability", "full", "incremental"}
+    assert client.post("/api/eval/run", json={"sites": [64]}).status_code == 422
+    assert client.post("/api/eval/run", json={"commands": 5000}).status_code == 422
