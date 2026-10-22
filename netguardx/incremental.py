@@ -23,7 +23,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 from .changes import Effect, apply_changes
-from .impact import AnalysisOptions, ChangeReport, assess
+from .impact import AnalysisOptions, ChangeReport, assess, phase_times
 from .models import Change, Network
 from .network import NetworkState, Trace, simulate
 from .verify import TrafficClass, build_classes
@@ -84,9 +84,13 @@ class IncrementalVerifier:
 
     def __call__(self, network: Network, changes: list[Change], options: AnalysisOptions) -> ChangeReport:
         t0 = time.perf_counter()
+        marks = [t0]
         base = self._sync(network, options)
+        marks.append(time.perf_counter())
         cf_net, inverses, effects = apply_changes(network, changes, share=True)
+        marks.append(time.perf_counter())
         after = base.state.derive(cf_net, {n for e in effects for n in e.nodes})
+        marks.append(time.perf_counter())
 
         affected = self._affected(base, effects)
         if _widens_classes(changes):
@@ -95,13 +99,17 @@ class IncrementalVerifier:
             affected = (affected & classes.keys()) | (classes.keys() - base.traces.keys())
         else:
             classes, tb = base.classes, base.traces
+        marks.append(time.perf_counter())
         ta = dict(tb)
         for k in affected:
             ta[k] = _sim(after, classes[k])
+        marks.append(time.perf_counter())
 
         report = assess(network, cf_net, changes, inverses, effects, base.state, after, classes, tb, ta,
                         options, t0, self)
+        marks.append(time.perf_counter())
         report.meta["resimulated"] = len(affected)
+        report.meta["phases_ms"] = phase_times(("sync", "apply", "state", "select", "simulate", "assess"), marks)
         # set last: the rollback check inside assess calls this verifier again, for a different command
         self._last = _Candidate(cf_net, base.key, after, changes, ta, affected)
         return report

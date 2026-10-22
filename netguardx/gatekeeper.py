@@ -58,6 +58,7 @@ class Decision(BaseModel):
     reason: str
     version: int  # model version after this decision
     verify_ms: float = 0.0
+    commit_ms: float = 0.0  # executing the command on the model; not part of verification overhead
     tier: str = "full"
     report: Optional[ChangeReport] = None
     checkpoint: Optional[int] = None
@@ -104,9 +105,9 @@ class Gatekeeper:
             self.pending[p.id] = p
             return Decision(outcome=HELD, version=self.version, reason=headline, verify_ms=ms, report=report,
                             pending_id=p.id)
-        cp = self._commit(changes, meta)
+        cp, commit_ms = self._commit(changes, meta)
         return Decision(outcome=EXECUTED, version=self.version, reason=headline, verify_ms=ms, report=report,
-                        checkpoint=cp.seq)
+                        checkpoint=cp.seq, commit_ms=commit_ms)
 
     # ------------------------------------------------------------ human approval
     def approve(self, pending_id: int) -> Decision:
@@ -126,9 +127,9 @@ class Gatekeeper:
                 self.pending[p.id] = p.model_copy(update={"version": self.version, "report": report})
                 return Decision(outcome=HELD, version=self.version, verify_ms=ms, report=report, pending_id=p.id,
                                 reason=f"the model changed since this was reviewed; review again: {headline}")
-        cp = self._commit(p.changes, p.meta)
+        cp, commit_ms = self._commit(p.changes, p.meta)
         return Decision(outcome=EXECUTED, version=self.version, reason=report.verdict["headline"], verify_ms=ms,
-                        report=report, checkpoint=cp.seq)
+                        report=report, checkpoint=cp.seq, commit_ms=commit_ms)
 
     def deny(self, pending_id: int) -> Decision:
         p = self._take(pending_id)
@@ -157,13 +158,14 @@ class Gatekeeper:
             report, error = None, str(exc)
         return report, error, round((time.perf_counter() - t0) * 1000, 3)
 
-    def _commit(self, changes: list[Change], meta: dict[str, Any]) -> Checkpoint:
+    def _commit(self, changes: list[Change], meta: dict[str, Any]) -> tuple[Checkpoint, float]:
+        t0 = time.perf_counter()
         self.network, inverses, _ = apply_changes(self.network, changes)
         self.version += 1
         cp = Checkpoint(seq=len(self.checkpoints) + 1, version=self.version, changes=changes,
                         inverses=inverses, meta=meta)
         self.checkpoints.append(cp)
-        return cp
+        return cp, round((time.perf_counter() - t0) * 1000, 3)
 
     def _take(self, pending_id: int) -> Pending:
         if pending_id not in self.pending:

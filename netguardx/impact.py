@@ -282,13 +282,25 @@ def analyze(network: Network, changes: list[Change], options: Optional[AnalysisO
     opts = options or AnalysisOptions()
     t0 = time.perf_counter()
 
+    marks = [t0]
     cf_net, inverses, effects = apply_changes(network, changes)
+    marks.append(time.perf_counter())
     before, after = NetworkState(network), NetworkState(cf_net)
-
+    marks.append(time.perf_counter())
     classes = build_classes([network, cf_net], probes=opts.probes, probe_limit=opts.probe_limit)
+    marks.append(time.perf_counter())
     tb = {k: simulate(before, c.source, c.destination, c.protocol, c.port) for k, c in classes.items()}
     ta = {k: simulate(after, c.source, c.destination, c.protocol, c.port) for k, c in classes.items()}
-    return assess(network, cf_net, changes, inverses, effects, before, after, classes, tb, ta, opts, t0, analyze)
+    marks.append(time.perf_counter())
+    report = assess(network, cf_net, changes, inverses, effects, before, after, classes, tb, ta, opts, t0, analyze)
+    marks.append(time.perf_counter())
+    report.meta["phases_ms"] = phase_times(("apply", "state", "classes", "simulate", "assess"), marks)
+    return report
+
+
+def phase_times(names: tuple[str, ...], marks: list[float]) -> dict[str, float]:
+    """Milliseconds spent in each named phase, given the timestamps between them (one more than names)."""
+    return {n: round((b - a) * 1000, 3) for n, a, b in zip(names, marks, marks[1:])}
 
 
 def assess(
