@@ -1,3 +1,5 @@
+import json
+
 import pytest
 
 from netguardx import verify_network
@@ -88,3 +90,37 @@ def test_several_seeds_are_combined_with_confidence_intervals():
 def test_a_single_seed_has_no_interval():
     inc = run_eval([1], commands=10, seed=4, arms=("incremental",))["runs"][0]["arms"]["incremental"]
     assert inc["check_ms_p50_ci95"] is None
+
+
+@pytest.mark.parametrize("users", [1, 3])
+def test_device_counts_match_the_generator(users):
+    from netguardx.eval.topologies import devices_in
+
+    for sites in (1, 4, 9, 12):
+        assert len(campus_network(sites, users_per_site=users).nodes) == devices_in(sites, users)
+
+
+def test_sizes_by_device_count():
+    from netguardx.eval.topologies import sites_for_devices
+
+    assert [sites_for_devices(d) for d in (50, 63, 75)] == [8, 10, 12]
+    assert sites_for_devices(75, users_per_site=4) == 8
+    with pytest.raises(ValueError):
+        sites_for_devices(10 ** 6)
+
+
+def test_extra_users_share_the_router_and_are_held_to_policy():
+    net = campus_network(2, users_per_site=3)
+    users = sorted(n.id for n in net.nodes if n.type == "host")
+    assert users == ["USER0", "USER0-1", "USER0-2", "USER1", "USER1-1", "USER1-2"]
+    assert {(l.source, l.destination) for l in net.links} >= {("USER0-2", "R0"), ("USER1-1", "R1")}
+    assert any(p.source == "USER0-2" and p.action == "DENY" and p.destination == "DB0" for p in net.policies)
+    assert verify_network(net).summary["policies_violated"] == 0
+
+
+def test_cli_accepts_device_counts(tmp_path, capsys):
+    from netguardx.cli import main
+
+    assert main(["eval", "--devices", "14", "--commands", "5", "--out", str(tmp_path)]) == 0
+    summary = json.loads((tmp_path / "summary.json").read_text(encoding="utf-8"))
+    assert summary["config"]["sites"] == [2] and summary["runs"][0]["nodes"] == 14

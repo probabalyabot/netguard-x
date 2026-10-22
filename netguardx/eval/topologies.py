@@ -17,10 +17,31 @@ from ..verify import verify_network
 MAX_SITES = 250  # site i owns 10.i.0.0/16; 10.254/16 and 10.255/16 are infrastructure
 
 
-def campus_network(sites: int, cores: Optional[int] = None) -> Network:
+def default_cores(sites: int) -> int:
+    return max(1, sites // 4)
+
+
+def devices_in(sites: int, users_per_site: int = 1) -> int:
+    """Device count of ``campus_network(sites, users_per_site=...)`` with default cores, without building it."""
+    return sites * (5 + users_per_site) + default_cores(sites) + 1  # + the internet
+
+
+def sites_for_devices(target: int, users_per_site: int = 1) -> int:
+    """The smallest site count whose network has at least ``target`` devices."""
+    for sites in range(1, MAX_SITES + 1):
+        if devices_in(sites, users_per_site) >= target:
+            return sites
+    raise ValueError(f"{target} devices needs more than {MAX_SITES} sites")
+
+
+def campus_network(sites: int, cores: Optional[int] = None, users_per_site: int = 1) -> Network:
+    """``users_per_site`` user machines share each site's edge router (more endpoints per router, as in
+    a real office); the first is ``USER<i>``, the others ``USER<i>-<n>``."""
     if not 1 <= sites <= MAX_SITES:
         raise ValueError(f"sites must be between 1 and {MAX_SITES}")
-    k = max(1, sites // 4) if cores is None else cores
+    if not 1 <= users_per_site <= 200:
+        raise ValueError("users_per_site must be between 1 and 200")
+    k = default_cores(sites) if cores is None else cores
     if not 1 <= k <= 250:
         raise ValueError("cores must be between 1 and 250")
 
@@ -53,10 +74,12 @@ def campus_network(sites: int, cores: Optional[int] = None) -> Network:
     for i in range(sites):
         home = i % k
         user, app, db, r, fw, m = f"USER{i}", f"APP{i}", f"DB{i}", f"R{i}", f"FW{i}", f"M{i}"
+        users = [user] + [f"USER{i}-{n}" for n in range(1, users_per_site)]
         y, dy = (i + 0.5) / sites, 0.3 / sites
         up, mid, down = round(y - dy, 4), round(y, 4), round(y + dy, 4)
         nodes += [
-            {"id": user, "type": "host", "ip_addresses": [f"10.{i}.0.10"], "x": 0.45, "y": up},
+            *({"id": u, "type": "host", "ip_addresses": [f"10.{i}.0.{10 + n}"],
+               "x": round(0.45 - 0.02 * n, 4), "y": up} for n, u in enumerate(users)),
             {"id": app, "type": "server", "ip_addresses": [f"10.{i}.2.10"], "criticality": 3, "x": 0.45, "y": down},
             {"id": db, "type": "server", "ip_addresses": [f"10.{i}.5.10"], "criticality": 5, "x": 0.9, "y": mid},
             {"id": r, "type": "router", "ip_addresses": [f"10.255.{i}.1"], "x": 0.3, "y": mid},
@@ -64,13 +87,13 @@ def campus_network(sites: int, cores: Optional[int] = None) -> Network:
             {"id": fw, "type": "firewall", "ip_addresses": [f"10.255.{i}.10"], "x": 0.68, "y": up},
         ]
         links += [
-            {"source": user, "destination": r}, {"source": app, "destination": r},
+            *({"source": u, "destination": r} for u in users), {"source": app, "destination": r},
             {"source": r, "destination": f"C{home}"}, {"source": r, "destination": fw},
             {"source": fw, "destination": db},
             {"source": r, "destination": m}, {"source": m, "destination": db, "cost": 20},
         ]
         routes += [
-            {"router": user, "destination": "0.0.0.0/0", "next_hop": r},
+            *({"router": u, "destination": "0.0.0.0/0", "next_hop": r} for u in users),
             {"router": app, "destination": "0.0.0.0/0", "next_hop": r},
             {"router": db, "destination": "0.0.0.0/0", "next_hop": fw},
             {"router": r, "destination": f"10.{i}.5.0/24", "next_hop": fw},
@@ -96,8 +119,13 @@ def campus_network(sites: int, cores: Optional[int] = None) -> Network:
             {"action": "DENY", "source": "INET", "destination": db, "protocol": "TCP", "port": 5432},
             {"action": "ALLOW", "source": user, "destination": app, "protocol": "TCP", "port": 443},
         ]
+        for u in users[1:]:  # every extra user needs the app and must not reach the database
+            flows.append({"source": u, "destination": app, "protocol": "TCP", "port": 443, "criticality": 2})
+            policies.append({"action": "DENY", "source": u, "destination": db, "protocol": "TCP", "port": 5432})
 
-    net = Network.model_validate({"name": f"Campus network ({sites} sites, {k} cores)", "nodes": nodes,
+    net = Network.model_validate({"name": f"Campus network ({sites} sites, {k} cores"
+                                  + (f", {users_per_site} users per site)" if users_per_site > 1 else ")"),
+                                  "nodes": nodes,
                                   "links": links, "routes": routes, "acls": acls, "flows": flows,
                                   "policies": policies})
     base = verify_network(net)

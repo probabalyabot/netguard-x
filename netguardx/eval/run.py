@@ -163,7 +163,8 @@ def aggregate(summaries: list[dict[str, Any]]) -> dict[str, Any]:
 
 def run_eval(sites: list[int], commands: int = 200, seed: int = 0, fault_rate: float = 0.3,
              probes: bool = True, arms: tuple[str, ...] = ARMS,
-             seeds: Optional[list[int]] = None, memory: bool = False) -> dict[str, Any]:
+             seeds: Optional[list[int]] = None, memory: bool = False,
+             users_per_site: int = 1) -> dict[str, Any]:
     """Run every arm on every size.  With several ``seeds`` each size is replayed once per seed and
     the per-arm summaries are combined by ``aggregate``; ``per_seed`` keeps the individual ones."""
     seeds = list(seeds) if seeds else [seed]
@@ -171,7 +172,7 @@ def run_eval(sites: list[int], commands: int = 200, seed: int = 0, fault_rate: f
     runs: list[dict[str, Any]] = []
     steps: list[dict[str, Any]] = []
     for size in sites:
-        net = campus_network(size)
+        net = campus_network(size, users_per_site=users_per_site)
         per_seed = []
         for s in seeds:
             stream = generate_commands(net, commands, seed=s, fault_rate=fault_rate)
@@ -189,7 +190,8 @@ def run_eval(sites: list[int], commands: int = 200, seed: int = 0, fault_rate: f
             run["memory"] = cache_memory(net, options)
         runs.append(run)
     return {"config": {"sites": sites, "commands": commands, "seed": seeds[0], "seeds": seeds,
-                       "fault_rate": fault_rate, "probes": probes, "arms": list(arms), "memory": memory},
+                       "fault_rate": fault_rate, "probes": probes, "arms": list(arms), "memory": memory,
+                       "users_per_site": users_per_site},
             "runs": runs, "scaling": scaling(runs), "steps": steps}
 
 

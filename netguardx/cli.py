@@ -47,7 +47,11 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--port", type=int, default=8000)
 
     e = sub.add_parser("eval", help="replay a synthetic command stream through the baselines and the gatekeeper")
-    e.add_argument("--sites", type=int, nargs="+", default=[4], help="network sizes to run, e.g. --sites 4 8 16")
+    size = e.add_mutually_exclusive_group()
+    size.add_argument("--sites", type=int, nargs="+", help="network sizes in sites, e.g. --sites 4 8 16 (default 4)")
+    size.add_argument("--devices", type=int, nargs="+",
+                      help="network sizes in devices, e.g. --devices 50 63 75 (each rounded up to whole sites)")
+    e.add_argument("--users-per-site", type=int, default=1, help="user machines sharing each site's router")
     e.add_argument("--commands", type=int, default=200, help="commands per network")
     e.add_argument("--seed", type=int, default=0)
     e.add_argument("--seeds", type=int, nargs="+", help="run every size once per seed; report means with 95%% CIs")
@@ -64,8 +68,11 @@ def main(argv: list[str] | None = None) -> int:
             return EXIT_OK
         if args.cmd == "eval":
             from .eval.run import format_summary, run_eval, write_results
-            result = run_eval(args.sites, args.commands, args.seed, args.fault_rate, probes=not args.no_probes,
-                              seeds=args.seeds, memory=args.memory)
+            from .eval.topologies import sites_for_devices
+            sites = ([sites_for_devices(d, args.users_per_site) for d in args.devices] if args.devices
+                     else args.sites or [4])
+            result = run_eval(sites, args.commands, args.seed, args.fault_rate, probes=not args.no_probes,
+                              seeds=args.seeds, memory=args.memory, users_per_site=args.users_per_site)
             print(format_summary(result))
             if args.out:
                 print(f"\nwrote {write_results(result, args.out)}")
