@@ -57,6 +57,8 @@ def main(argv: list[str] | None = None) -> int:
     e.add_argument("--seeds", type=int, nargs="+", help="run every size once per seed; report means with 95%% CIs")
     e.add_argument("--fault-rate", type=float, default=0.3, help="share of commands drawn from fault classes")
     e.add_argument("--no-probes", action="store_true", help="skip exposure probes")
+    e.add_argument("--probe-limit", type=int,
+                   help="cap exposure probes per check (default: enough to probe every endpoint pair)")
     e.add_argument("--memory", action="store_true", help="also measure the incremental verifier's cache memory")
     e.add_argument("--out", help="directory for summary.json and steps.csv")
 
@@ -72,7 +74,8 @@ def main(argv: list[str] | None = None) -> int:
             sites = ([sites_for_devices(d, args.users_per_site) for d in args.devices] if args.devices
                      else args.sites or [4])
             result = run_eval(sites, args.commands, args.seed, args.fault_rate, probes=not args.no_probes,
-                              seeds=args.seeds, memory=args.memory, users_per_site=args.users_per_site)
+                              seeds=args.seeds, memory=args.memory, users_per_site=args.users_per_site,
+                              probe_limit=args.probe_limit)
             print(format_summary(result))
             if args.out:
                 print(f"\nwrote {write_results(result, args.out)}")

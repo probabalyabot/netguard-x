@@ -29,6 +29,10 @@ def render_eval_report(result: dict[str, Any]) -> str:
          f"{c['commands']} synthetic commands per network, fault rate {c['fault_rate']}, "
          f"probes {'on' if c['probes'] else 'off'}, seed{'s' if len(seeds) > 1 else ''} {', '.join(map(str, seeds))}.",
          ""]
+    if c["probes"]:
+        limit = c.get("probe_limit", 2000)
+        L += [("Exposure probes covered every endpoint pair" if limit == "all pairs" else f"Exposure probes were capped at {limit} per check")
+              + ": " + ", ".join(f"{r['probes']} at {r['nodes']} devices" for r in result["runs"] if "probes" in r) + ".", ""]
     if len(seeds) > 1:
         L += ["Figures are means over the seeds; +/- is the half-width of a 95% confidence interval.", ""]
 
@@ -96,6 +100,6 @@ def render_eval_report(result: dict[str, Any]) -> str:
           "- Times are from one machine and cover verification only; commit time is reported separately.",
           "- \"Unsafe\" is defined by full verification, so the gatekeeper arms are safe by construction.",
           "- Unsafe counts for the weaker checks are undercounts once their network is already broken.",
-          "- Projections assume check time keeps growing at the fitted rate; a probe limit that stops "
-          "growing with the network would bend the real curve.", ""]
+          "- Projections assume check time keeps growing at the fitted rate"
+          + ("." if c.get("probe_limit") == "all pairs" else "; a fixed probe cap would bend the real curve."), ""]
     return "\n".join(L)

@@ -27,7 +27,7 @@ from ..impact import AnalysisOptions, analyze
 from ..incremental import IncrementalVerifier
 from ..models import Network
 from ..network import NetworkState, static_issues
-from ..verify import verify_network
+from ..verify import build_classes, verify_network
 from .commands import Command, generate_commands
 from .metrics import cache_memory, overhead, scaling
 from .report import render_eval_report
@@ -161,18 +161,30 @@ def aggregate(summaries: list[dict[str, Any]]) -> dict[str, Any]:
     return out
 
 
+def probe_count(net: Network, limit: int) -> int:
+    """Exposure probes one check of ``net`` simulates under ``limit``."""
+    return sum(1 for c in build_classes([net], probes=True, probe_limit=limit).values() if not c.declared)
+
+
+def full_probe_limit(net: Network) -> int:
+    """A probe limit that covers every endpoint pair on every service of ``net``, with room for a
+    command that introduces one more service (at most as many probes again)."""
+    return 2 * probe_count(net, 10 ** 9)
+
+
 def run_eval(sites: list[int], commands: int = 200, seed: int = 0, fault_rate: float = 0.3,
              probes: bool = True, arms: tuple[str, ...] = ARMS,
              seeds: Optional[list[int]] = None, memory: bool = False,
-             users_per_site: int = 1) -> dict[str, Any]:
+             users_per_site: int = 1, probe_limit: Optional[int] = None) -> dict[str, Any]:
     """Run every arm on every size.  With several ``seeds`` each size is replayed once per seed and
     the per-arm summaries are combined by ``aggregate``; ``per_seed`` keeps the individual ones."""
     seeds = list(seeds) if seeds else [seed]
-    options = AnalysisOptions(probes=probes, rollback=False)  # one change per command: no batch to split
     runs: list[dict[str, Any]] = []
     steps: list[dict[str, Any]] = []
     for size in sites:
         net = campus_network(size, users_per_site=users_per_site)
+        limit = probe_limit if probe_limit is not None else full_probe_limit(net)
+        options = AnalysisOptions(probes=probes, probe_limit=limit, rollback=False)  # one change per command
         per_seed = []
         for s in seeds:
             stream = generate_commands(net, commands, seed=s, fault_rate=fault_rate)
@@ -183,6 +195,7 @@ def run_eval(sites: list[int], commands: int = 200, seed: int = 0, fault_rate: f
             per_seed.append({"seed": s, "arms": results})
         arm_summaries = {arm: aggregate([p["arms"][arm] for p in per_seed]) for arm in arms}
         run = {"sites": size, "nodes": len(net.nodes), "links": len(net.links), "routes": len(net.routes),
+               "probes": probe_count(net, limit) if probes else 0,
                "flows": len(net.flows), "policies": len(net.policies), "arms": arm_summaries,
                "per_seed": per_seed}
         run["overhead"] = overhead(run)
@@ -191,7 +204,8 @@ def run_eval(sites: list[int], commands: int = 200, seed: int = 0, fault_rate: f
         runs.append(run)
     return {"config": {"sites": sites, "commands": commands, "seed": seeds[0], "seeds": seeds,
                        "fault_rate": fault_rate, "probes": probes, "arms": list(arms), "memory": memory,
-                       "users_per_site": users_per_site},
+                       "users_per_site": users_per_site,
+                       "probe_limit": "all pairs" if probe_limit is None else probe_limit},
             "runs": runs, "scaling": scaling(runs), "steps": steps}
 
 

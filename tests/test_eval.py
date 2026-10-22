@@ -124,3 +124,15 @@ def test_cli_accepts_device_counts(tmp_path, capsys):
     assert main(["eval", "--devices", "14", "--commands", "5", "--out", str(tmp_path)]) == 0
     summary = json.loads((tmp_path / "summary.json").read_text(encoding="utf-8"))
     assert summary["config"]["sites"] == [2] and summary["runs"][0]["nodes"] == 14
+
+
+def test_evaluation_probes_every_endpoint_pair_by_default():
+    from netguardx.eval.run import full_probe_limit, probe_count
+
+    net = campus_network(12)  # 76 devices: 2592 probes, more than the engine's default cap of 2000
+    assert probe_count(net, 2000) == 2000 < probe_count(net, full_probe_limit(net)) == 2592
+    result = run_eval([1], commands=5, arms=("incremental",))
+    assert result["config"]["probe_limit"] == "all pairs"
+    assert result["runs"][0]["probes"] == probe_count(campus_network(1), 10 ** 9)
+    capped = run_eval([1], commands=5, arms=("incremental",), probe_limit=4)
+    assert capped["config"]["probe_limit"] == 4 and capped["runs"][0]["probes"] == 4
