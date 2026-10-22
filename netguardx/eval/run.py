@@ -29,6 +29,7 @@ from ..models import Network
 from ..network import NetworkState, static_issues
 from ..verify import verify_network
 from .commands import Command, generate_commands
+from .stats import mean_ci
 from .topologies import campus_network
 
 ARMS = ("none", "lint", "reachability", "full", "incremental")
@@ -71,6 +72,8 @@ def run_arm(arm: str, network: Network, commands: list[Command],
          "unsafe_executed": 0, "safe_rejected": 0, "unhealthy_steps": 0, "mismatches": 0}
     times: list[float] = []
     shares: list[float] = []
+    phases: dict[str, list[float]] = {}
+    commits: list[float] = []
     rows: list[dict[str, Any]] = []
 
     for cmd in commands:
@@ -87,11 +90,15 @@ def run_arm(arm: str, network: Network, commands: list[Command],
                 share = round(meta.get("resimulated", meta["classes"]) / meta["classes"], 4)
                 times.append(ms)
                 shares.append(share)
+                for k, v in meta.get("phases_ms", {}).items():
+                    phases.setdefault(k, []).append(v)
             n["mismatches"] += (d.report is None) != (oracle is None) or (
                 oracle is not None and d.report.model_dump(exclude={"meta"}) != oracle.model_dump(exclude={"meta"}))
             if d.outcome == HELD:
                 n["held"] += 1
                 d = gk.approve(d.pending_id)
+            if d.outcome == EXECUTED:
+                commits.append(d.commit_ms)
             outcome, state = d.outcome, gk.network
         elif verdict == INVALID:
             outcome = INVALID
@@ -118,29 +125,65 @@ def run_arm(arm: str, network: Network, commands: list[Command],
                      "oracle": verdict, "outcome": outcome, "check_ms": ms, "resim_share": share,
                      "healthy": healthy})
 
+    mean_ms = round(sum(times) / len(times), 3) if times else 0.0
     summary = {"commands": len(commands), **n,
                "resim_share": round(sum(shares) / len(shares), 4) if shares else None,
-               "check_ms_mean": round(sum(times) / len(times), 3) if times else 0.0,
-               "check_ms_p50": _pct(times, 0.5), "check_ms_p95": _pct(times, 0.95)}
+               "check_ms_mean": mean_ms, "check_ms_p50": _pct(times, 0.5), "check_ms_p95": _pct(times, 0.95),
+               "commands_per_s": round(1000 / mean_ms, 1) if mean_ms > 0 else None,
+               "phases_ms_mean": {k: round(sum(v) / len(v), 3) for k, v in phases.items()} if phases else None,
+               "commit_ms_mean": round(sum(commits) / len(commits), 3) if commits else None}
     return summary, rows
 
 
+_CI_KEYS = ("check_ms_mean", "check_ms_p50", "check_ms_p95", "commands_per_s")
+
+
+def aggregate(summaries: list[dict[str, Any]]) -> dict[str, Any]:
+    """Combine one arm's summaries over several seeds: means, a 95% CI for the timing keys, and the
+    total of ``mismatches`` (a correctness count, so any non-zero seed must show)."""
+    out: dict[str, Any] = {}
+    for key, first in summaries[0].items():
+        vals = [s[key] for s in summaries if s.get(key) is not None]
+        if key == "mismatches":
+            out[key] = sum(vals)
+        elif vals and isinstance(vals[0], dict):
+            names = sorted({k for v in vals for k in v})
+            out[key] = {k: round(mean_ci([v[k] for v in vals if k in v])[0], 3) for k in names}
+        elif vals and all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in vals):
+            m, half = mean_ci(vals)
+            out[key] = round(m, 4)
+            if key in _CI_KEYS:
+                out[f"{key}_ci95"] = round(half, 4) if half is not None else None
+        else:
+            out[key] = first
+    return out
+
+
 def run_eval(sites: list[int], commands: int = 200, seed: int = 0, fault_rate: float = 0.3,
-             probes: bool = True, arms: tuple[str, ...] = ARMS) -> dict[str, Any]:
+             probes: bool = True, arms: tuple[str, ...] = ARMS,
+             seeds: Optional[list[int]] = None) -> dict[str, Any]:
+    """Run every arm on every size.  With several ``seeds`` each size is replayed once per seed and
+    the per-arm summaries are combined by ``aggregate``; ``per_seed`` keeps the individual ones."""
+    seeds = list(seeds) if seeds else [seed]
     options = AnalysisOptions(probes=probes, rollback=False)  # one change per command: no batch to split
     runs: list[dict[str, Any]] = []
     steps: list[dict[str, Any]] = []
     for size in sites:
         net = campus_network(size)
-        stream = generate_commands(net, commands, seed=seed, fault_rate=fault_rate)
-        results = {}
-        for arm in arms:
-            results[arm], rows = run_arm(arm, net, stream, options)
-            steps += [{"sites": size, **r} for r in rows]
+        per_seed = []
+        for s in seeds:
+            stream = generate_commands(net, commands, seed=s, fault_rate=fault_rate)
+            results = {}
+            for arm in arms:
+                results[arm], rows = run_arm(arm, net, stream, options)
+                steps += [{"sites": size, "seed": s, **r} for r in rows]
+            per_seed.append({"seed": s, "arms": results})
+        arm_summaries = {arm: aggregate([p["arms"][arm] for p in per_seed]) for arm in arms}
         runs.append({"sites": size, "nodes": len(net.nodes), "links": len(net.links), "routes": len(net.routes),
-                     "flows": len(net.flows), "policies": len(net.policies), "arms": results})
-    return {"config": {"sites": sites, "commands": commands, "seed": seed, "fault_rate": fault_rate,
-                       "probes": probes, "arms": list(arms)},
+                     "flows": len(net.flows), "policies": len(net.policies), "arms": arm_summaries,
+                     "per_seed": per_seed})
+    return {"config": {"sites": sites, "commands": commands, "seed": seeds[0], "seeds": seeds,
+                       "fault_rate": fault_rate, "probes": probes, "arms": list(arms)},
             "runs": runs, "steps": steps}
 
 
@@ -157,7 +200,9 @@ def write_results(result: dict[str, Any], out_dir: str) -> Path:
 
 def format_summary(result: dict[str, Any]) -> str:
     c = result["config"]
-    L = [f"{c['commands']} commands per network, seed {c['seed']}, fault rate {c['fault_rate']}, "
+    seeds = c.get("seeds", [c["seed"]])
+    seed_txt = f"seed {seeds[0]}" if len(seeds) == 1 else f"seeds {', '.join(map(str, seeds))} (means, ± 95% CI)"
+    L = [f"{c['commands']} commands per network, {seed_txt}, fault rate {c['fault_rate']}, "
          f"probes {'on' if c['probes'] else 'off'}", ""]
     head = ("sites", "nodes", "arm", "executed", "rejected", "held", "invalid", "unsafe_exec", "safe_rej",
             "unhealthy", "mismatch", "resim", "p50_ms", "p95_ms")
@@ -168,6 +213,11 @@ def format_summary(result: dict[str, Any]) -> str:
             vals = (run["sites"], run["nodes"], arm, s["executed"], s["rejected"], s["held"], s["invalid"],
                     s["unsafe_executed"], s["safe_rejected"], s["unhealthy_steps"],
                     s["mismatches"] if gated else "-", f"{s['resim_share']:.1%}" if gated else "-",
-                    s["check_ms_p50"], s["check_ms_p95"])
+                    _with_ci(s, "check_ms_p50"), _with_ci(s, "check_ms_p95"))
             L.append("  ".join(f"{v:>12}" for v in vals))
     return "\n".join(L)
+
+
+def _with_ci(s: dict[str, Any], key: str) -> str:
+    half = s.get(f"{key}_ci95")
+    return f"{s[key]:g}" if half is None else f"{s[key]:g}±{half:.2g}"

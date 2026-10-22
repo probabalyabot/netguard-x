@@ -27,13 +27,22 @@ def test_command_stream_is_seeded(net):
     assert all(c.intent in BENIGN for c in generate_commands(net, 20, seed=3, fault_rate=0))
 
 
+TIMING = ("check_ms", "commands_per_s", "phases_ms", "commit_ms")
+
+
+def _strip(value):
+    """Drop every timing field, at any depth: they differ from run to run."""
+    if isinstance(value, dict):
+        return {k: _strip(v) for k, v in value.items() if not k.startswith(TIMING)}
+    if isinstance(value, list):
+        return [_strip(v) for v in value]
+    return value
+
+
 def _without_timing(result):
-    runs = [{**r, "arms": {a: {k: v for k, v in s.items() if not k.startswith("check_ms")}
-                           for a, s in r["arms"].items()}} for r in result["runs"]]
-    steps = [{k: v for k, v in s.items() if k != "check_ms"} for s in result["steps"]]
-    for r in runs:  # full verification still stops at ~1 while it re-simulates everything
+    for r in result["runs"]:  # full verification still stops at ~1 while it re-simulates everything
         assert all(a["resim_share"] is None or 0 <= a["resim_share"] <= 1 for a in r["arms"].values())
-    return runs, steps
+    return _strip(result["runs"]), _strip(result["steps"])
 
 
 def test_arms_and_reproducibility(tmp_path):
@@ -58,3 +67,24 @@ def test_arms_and_reproducibility(tmp_path):
     out = write_results(result, tmp_path)
     assert (out / "summary.json").exists()
     assert len((out / "steps.csv").read_text().splitlines()) == 1 + len(arms) * 100
+
+
+def test_several_seeds_are_combined_with_confidence_intervals():
+    result = run_eval([2], commands=20, seeds=[1, 2, 3], arms=("none", "incremental"))
+    assert result["config"]["seeds"] == [1, 2, 3] and result["config"]["seed"] == 1
+    run = result["runs"][0]
+    assert [p["seed"] for p in run["per_seed"]] == [1, 2, 3]
+    inc = run["arms"]["incremental"]
+    singles = [p["arms"]["incremental"] for p in run["per_seed"]]
+    assert inc["check_ms_p50"] == pytest.approx(sum(s["check_ms_p50"] for s in singles) / 3, abs=1e-3)
+    assert inc["check_ms_p50_ci95"] is not None and inc["check_ms_p50_ci95"] >= 0
+    assert inc["mismatches"] == sum(s["mismatches"] for s in singles) == 0
+    assert set(inc["phases_ms_mean"]) == {"sync", "apply", "state", "select", "simulate", "assess"}
+    assert inc["commands_per_s"] > 0 and inc["commit_ms_mean"] > 0
+    assert run["arms"]["none"]["phases_ms_mean"] is None  # no verifier, nothing to break down
+    assert {r["seed"] for r in result["steps"]} == {1, 2, 3}
+
+
+def test_a_single_seed_has_no_interval():
+    inc = run_eval([1], commands=10, seed=4, arms=("incremental",))["runs"][0]["arms"]["incremental"]
+    assert inc["check_ms_p50_ci95"] is None

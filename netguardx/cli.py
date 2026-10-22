@@ -50,6 +50,7 @@ def main(argv: list[str] | None = None) -> int:
     e.add_argument("--sites", type=int, nargs="+", default=[4], help="network sizes to run, e.g. --sites 4 8 16")
     e.add_argument("--commands", type=int, default=200, help="commands per network")
     e.add_argument("--seed", type=int, default=0)
+    e.add_argument("--seeds", type=int, nargs="+", help="run every size once per seed; report means with 95%% CIs")
     e.add_argument("--fault-rate", type=float, default=0.3, help="share of commands drawn from fault classes")
     e.add_argument("--no-probes", action="store_true", help="skip exposure probes")
     e.add_argument("--out", help="directory for summary.json and steps.csv")
@@ -62,7 +63,8 @@ def main(argv: list[str] | None = None) -> int:
             return EXIT_OK
         if args.cmd == "eval":
             from .eval.run import format_summary, run_eval, write_results
-            result = run_eval(args.sites, args.commands, args.seed, args.fault_rate, probes=not args.no_probes)
+            result = run_eval(args.sites, args.commands, args.seed, args.fault_rate, probes=not args.no_probes,
+                              seeds=args.seeds)
             print(format_summary(result))
             if args.out:
                 print(f"\nwrote {write_results(result, args.out)}")
