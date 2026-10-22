@@ -57,3 +57,5 @@ export function traceEnd(t: Trace): string {
 export const edgeKey = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`);
 
 export const errMsg = (e: unknown) => (e instanceof Error ? e.message : String(e));
+/** A count, possibly averaged over seeds: whole numbers as they are, otherwise one decimal. */
+export const count = (v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(1));

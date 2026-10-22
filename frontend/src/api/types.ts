@@ -123,17 +123,28 @@ export interface ArmSummary {
   commands: number; executed: number; rejected: number; held: number; invalid: number;
   unsafe_executed: number; safe_rejected: number; unhealthy_steps: number; mismatches: number;
   resim_share: number | null; check_ms_mean: number; check_ms_p50: number; check_ms_p95: number;
+  // Added with several seeds and per-step timing; absent in older summary.json files.
+  check_ms_p50_ci95?: number | null; check_ms_p95_ci95?: number | null; check_ms_mean_ci95?: number | null;
+  commands_per_s?: number | null; phases_ms_mean?: Record<string, number> | null; commit_ms_mean?: number | null;
 }
 export interface EvalRun {
   sites: number; nodes: number; links: number; routes: number; flows: number; policies: number;
   arms: Partial<Record<ArmName, ArmSummary>>;
+  per_seed?: { seed: number; arms: Partial<Record<ArmName, ArmSummary>> }[];
+  memory?: { cache_mb: number; peak_mb: number };
 }
 export interface EvalStep {
-  sites: number; arm: ArmName; step: number; intent: string; operation: string; oracle: string;
+  sites: number; seed?: number; arm: ArmName; step: number; intent: string; operation: string; oracle: string;
   outcome: string; check_ms: number; resim_share: number | null; healthy: boolean;
 }
+export type GatedArm = "full" | "incremental";
+export interface ScalingArm {
+  measured: { devices: number; ms_p50: number }[];
+  fit: { a: number; exponent: number; r2: number | null; points: number };
+  projected: { devices: number; ms_p50: number }[];
+}
 export interface EvalResult {
-  config: { sites: number[]; commands: number; seed: number; fault_rate: number; probes: boolean; arms: ArmName[] };
-  runs: EvalRun[]; steps?: EvalStep[];
+  config: { sites: number[]; commands: number; seed: number; seeds?: number[]; fault_rate: number; probes: boolean; arms: ArmName[]; memory?: boolean };
+  runs: EvalRun[]; steps?: EvalStep[]; scaling?: Partial<Record<GatedArm, ScalingArm>> | null;
 }
 export interface EvalRequest { sites: number[]; commands: number; seed: number; fault_rate: number; probes: boolean }

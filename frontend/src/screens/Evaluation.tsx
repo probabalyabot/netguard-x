@@ -1,12 +1,12 @@
 import { Play, Upload } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { api } from "../api/client";
-import type { EvalResult } from "../api/types";
-import { ArmChart, LatencyChart, ResimChart, SpeedupChart, StepChart } from "../components/EvalCharts";
+import type { EvalResult, GatedArm } from "../api/types";
+import { ArmChart, LatencyChart, PhaseChart, ResimChart, ScalingChart, SpeedupChart, StepChart } from "../components/EvalCharts";
 import { Chip, Empty, Notice, PageHeader, Segmented, Spinner } from "../components/ui";
 import { config } from "../config";
-import { ARM_LABEL, ARM_ORDER, ARM_RULE, METRICS, parseEvalResult, runLabel } from "../lib/evalData";
-import { errMsg, ms, pct } from "../lib/format";
+import { ARM_LABEL, ARM_ORDER, ARM_RULE, METRICS, parseEvalResult, phaseRows, runLabel } from "../lib/evalData";
+import { count, errMsg, ms, pct } from "../lib/format";
 
 interface Loaded { result: EvalResult; source: string; at: string; seconds?: number }
 let cache: Loaded | null = null; // survives navigation within the session; never persisted
@@ -30,6 +30,7 @@ export function Evaluation() {
   const [error, setError] = useState<string | null>(null);
   const [metric, setMetric] = useState(METRICS[0].key);
   const [stepSites, setStepSites] = useState<number | null>(null);
+  const [phaseArm, setPhaseArm] = useState<GatedArm>("incremental");
   const abort = useRef<AbortController | null>(null);
   const file = useRef<HTMLInputElement>(null);
 
@@ -62,6 +63,7 @@ export function Evaluation() {
 
   const r = loaded?.result;
   const cfg = r?.config;
+  const seeds = cfg?.seeds ?? (cfg ? [cfg.seed] : []);
   const gated = r?.runs.some((x) => x.arms.full && x.arms.incremental);
   const m = METRICS.find((x) => x.key === metric)!;
   const stepSize = stepSites ?? r?.runs[r.runs.length - 1]?.sites ?? 0;
@@ -105,10 +107,12 @@ export function Evaluation() {
         <div className="space-y-5">
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <Chip tone="net">{loaded!.source}</Chip>
-            <Chip>{cfg.commands} commands per network</Chip><Chip>seed {cfg.seed}</Chip><Chip>fault rate {cfg.fault_rate}</Chip><Chip>probes {cfg.probes ? "on" : "off"}</Chip>
+            <Chip>{cfg.commands} commands per network</Chip><Chip>{seeds.length > 1 ? `seeds ${seeds.join(", ")}` : `seed ${cfg.seed}`}</Chip><Chip>fault rate {cfg.fault_rate}</Chip><Chip>probes {cfg.probes ? "on" : "off"}</Chip>
             {loaded!.seconds != null && <Chip>took {loaded!.seconds.toFixed(1)} s</Chip>}
           </div>
-          <Notice tone="net" title="Read these as one measurement, not a benchmark">Timings are from a single seed on whichever machine runs the API, with no repeated runs or confidence intervals. Check time covers verification only. Unsafe-command counts for the weaker strategies are undercounts, because once a network is broken later damage is treated as already present. The <b className="font-medium text-fg">full</b> arm is safe by construction: unsafe is defined by full verification.</Notice>
+          {seeds.length > 1
+            ? <Notice tone="net" title={`Means over ${seeds.length} seeds`}>Each network size was replayed once per seed. Figures are means, and error bars show 95% confidence intervals. Timings are from whichever machine ran the harness and cover verification only. Unsafe-command counts for the weaker strategies are undercounts, because once a network is broken later damage is treated as already present. The <b className="font-medium text-fg">full</b> arm is safe by construction: unsafe is defined by full verification.</Notice>
+            : <Notice tone="net" title="Read these as one measurement, not a benchmark">Timings are from a single seed on whichever machine runs the API, with no repeated runs or confidence intervals; run several seeds from the command line (<code>--seeds 1 2 3 4 5</code>) for error bars. Check time covers verification only. Unsafe-command counts for the weaker strategies are undercounts, because once a network is broken later damage is treated as already present. The <b className="font-medium text-fg">full</b> arm is safe by construction: unsafe is defined by full verification.</Notice>}
 
           {gated ? (
             <div className="grid gap-5 xl:grid-cols-2">
@@ -125,6 +129,32 @@ export function Evaluation() {
             </div>
           ) : <Notice tone="warn" title="Latency charts need both gatekeeper arms">This result does not include both the full and incremental arms, so speed-up and re-simulation are not shown.</Notice>}
 
+          {phaseRows(r.runs, phaseArm).length > 0 && (
+            <Panel title="Where the time goes" sub="mean milliseconds per command, by step of the verifier">
+              <div className="mb-3"><Segmented label="Verifier" value={phaseArm} onChange={setPhaseArm} options={[{ value: "incremental", label: ARM_LABEL.incremental }, { value: "full", label: ARM_LABEL.full }]} /></div>
+              <PhaseChart runs={r.runs} arm={phaseArm} />
+              <p className="mt-2 text-xs text-faint">This is the overhead the gatekeeper adds before a command may run. Applying an executed command to the model (commit) is measured separately: {r.runs.map((x) => `${runLabel(x)}: ${ms(x.arms[phaseArm]?.commit_ms_mean)}`).join("; ")}.</p>
+            </Panel>
+          )}
+
+          {r.scaling && Object.keys(r.scaling).length > 0 && (
+            <Panel title="Scaling and projection" sub="median check time against devices, log scales; dashed lines continue the fit">
+              <ScalingChart scaling={r.scaling} />
+              <table className="mt-3 w-full text-sm"><thead><tr>{["Verifier", "Growth exponent", "Fit R²", ...(Object.values(r.scaling)[0]?.projected ?? []).map((p) => `Projected at ${p.devices} devices`)].map((h, i) => <th key={h} className={`th ${i > 0 ? "text-right" : ""}`}>{h}</th>)}</tr></thead>
+                <tbody>{(["full", "incremental"] as const).filter((a) => r.scaling![a]).map((a) => { const s = r.scaling![a]!; return (
+                  <tr key={a}><td className="td">{ARM_LABEL[a]}</td><td className="td text-right tabular-nums">{s.fit.exponent.toFixed(2)}</td><td className="td text-right tabular-nums">{s.fit.r2 == null ? "n/a" : s.fit.r2.toFixed(3)}</td>
+                    {s.projected.map((p) => <td key={p.devices} className="td text-right tabular-nums">{ms(p.ms_p50)}</td>)}</tr>); })}</tbody></table>
+              <p className="mt-2 text-xs text-faint">Time grows roughly as devices to the power of the exponent. Projected values extrapolate the fit beyond the measured sizes; they are not measurements.</p>
+            </Panel>
+          )}
+
+          {r.runs.some((x) => x.memory) && (
+            <Panel title="Memory of the incremental cache" sub="kept between commands; peak while building it">
+              <table className="w-full text-sm"><thead><tr><th className="th">Network</th><th className="th text-right">Cache held</th><th className="th text-right">Peak while building</th></tr></thead>
+                <tbody>{r.runs.filter((x) => x.memory).map((x) => <tr key={x.sites}><td className="td">{runLabel(x)}</td><td className="td text-right tabular-nums">{x.memory!.cache_mb} MB</td><td className="td text-right tabular-nums">{x.memory!.peak_mb} MB</td></tr>)}</tbody></table>
+            </Panel>
+          )}
+
           <Panel title="Strategies compared" sub="by network size">
             <div className="mb-3"><Segmented label="Metric" value={metric} onChange={setMetric} options={METRICS.map((x) => ({ value: x.key, label: x.label }))} /></div>
             <ArmChart runs={r.runs} metric={metric} unit={m.unit} />
@@ -134,7 +164,7 @@ export function Evaluation() {
             <Panel title="Check time for every command" sub="full and incremental, in the order the commands were proposed">
               <div className="mb-3 flex items-center gap-2 text-sm"><label htmlFor="ev-sz" className="text-muted">Network</label>
                 <select id="ev-sz" className="field !w-auto" value={stepSize} onChange={(e) => setStepSites(Number(e.target.value))}>{r.runs.map((x) => <option key={x.sites} value={x.sites}>{runLabel(x)}</option>)}</select></div>
-              <StepChart steps={r.steps} sites={stepSize} />
+              <StepChart steps={r.steps} sites={stepSize} seed={cfg.seed} />
               <p className="mt-2 text-xs text-faint">The first incremental command pays for building its cache. Commands that do not apply to the network are not verified and are left out.</p>
             </Panel>
           ) : <p className="text-xs text-faint">Per-command timings are not part of summary.json. Run the harness here to see them.</p>}
@@ -149,7 +179,7 @@ export function Evaluation() {
                     return (
                       <tr key={`${run.sites}-${a}`} className={i === 0 ? "[&>td]:border-t [&>td]:border-line-strong" : undefined}>
                         <td className="td whitespace-nowrap">{i === 0 ? runLabel(run) : ""}</td><td className="td whitespace-nowrap">{ARM_LABEL[a]}</td>
-                        {[s.executed, s.rejected, s.held, s.invalid, s.unsafe_executed, s.safe_rejected, s.unhealthy_steps].map((v, k) => <td key={k} className="td text-right tabular-nums">{v}</td>)}
+                        {[s.executed, s.rejected, s.held, s.invalid, s.unsafe_executed, s.safe_rejected, s.unhealthy_steps].map((v, k) => <td key={k} className="td text-right tabular-nums">{count(v)}</td>)}
                         <td className="td text-right tabular-nums">{gk ? s.mismatches : "n/a"}</td><td className="td text-right tabular-nums">{gk ? pct(s.resim_share) : "n/a"}</td>
                         <td className="td text-right tabular-nums">{ms(s.check_ms_p50)}</td><td className="td text-right tabular-nums">{ms(s.check_ms_p95)}</td><td className="td text-right tabular-nums">{ms(s.check_ms_mean)}</td>
                       </tr>);
