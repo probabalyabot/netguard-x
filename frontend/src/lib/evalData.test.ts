@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ArmSummary, EvalRun } from "../api/types";
 import { readFileSync } from "node:fs";
-import { armSeries, parseEvalResult, phaseRows, scalingSeries, sizeRows } from "./evalData";
+import { armSeries, devicesIn, parseEvalResult, phaseRows, scalingSeries, sizeRows } from "./evalData";
 
 const arm = (p50: number, p95: number, resim: number | null, extra: Partial<ArmSummary> = {}): ArmSummary => ({
   commands: 10, executed: 8, rejected: 2, held: 0, invalid: 0, unsafe_executed: 0, safe_rejected: 0, unhealthy_steps: 0, mismatches: 0,
@@ -68,5 +68,13 @@ describe("parseEvalResult", () => {
     expect(old.runs.length).toBeGreaterThan(0);
     expect(old.scaling).toBeUndefined();
     expect(phaseRows(old.runs, "incremental")).toEqual([]);
+  });
+});
+
+describe("devicesIn", () => {
+  it("matches the generator's device counts for the 50-75 device sizes", () => {
+    // values from netguardx/eval/topologies.py devices_in, checked by tests/test_eval.py
+    expect([2, 4, 8, 10, 12].map((s) => devicesIn(s))).toEqual([14, 26, 51, 63, 76]);
+    expect(devicesIn(8, 4)).toBe(75);
   });
 });

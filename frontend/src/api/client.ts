@@ -1,6 +1,6 @@
 import { config } from "../config";
 import type {
-  ChangeReport, Change, EvalRequest, EvalResult, ExamplesResponse, InterpretResponse, Network, RiskWeights, VerifyResponse,
+  ChangeReport, Change, EvalJob, EvalRequest, EvalResult, ExamplesResponse, InterpretResponse, Network, RiskWeights, VerifyResponse,
 } from "./types";
 
 /** An error with a message that is safe to show as-is. `kind` tells the UI how to react. */
@@ -42,4 +42,7 @@ export const api = {
     post<ChangeReport>("/api/simulate", { network, changes, ...opts }),
   interpret: (text: string, network: Network) => post<InterpretResponse>("/api/interpret", { text, network }),
   evalRun: (req: EvalRequest, signal?: AbortSignal) => post<EvalResult>("/api/eval/run", req, signal),
+  evalJobStart: (req: EvalRequest) => post<EvalJob>("/api/eval/jobs", req),
+  evalJob: (id: string, signal?: AbortSignal) => request<EvalJob>(`/api/eval/jobs/${encodeURIComponent(id)}`, undefined, signal),
+  evalJobCancel: (id: string) => post<EvalJob>(`/api/eval/jobs/${encodeURIComponent(id)}/cancel`, {}),
 };

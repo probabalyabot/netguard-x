@@ -15,6 +15,9 @@ export const ARM_COLOR: Record<ArmName, string> = {
   none: "#d55181", lint: "#c98500", reachability: "#199e70", full: "#d95926", incremental: "#3987e5",
 };
 
+/** Devices in a generated campus network of ``sites`` sites (mirrors netguardx/eval/topologies.py devices_in). */
+export const devicesIn = (sites: number, usersPerSite = 1) => sites * (5 + usersPerSite) + Math.max(1, Math.floor(sites / 4)) + 1;
+
 export const runLabel = (r: EvalRun) => `${r.sites} site${r.sites === 1 ? "" : "s"} · ${r.nodes} nodes`;
 
 export interface SizeRow { label: string; sites: number; nodes: number; fullP50?: number; fullP95?: number; incP50?: number; incP95?: number; fullCi?: number; incCi?: number; speedup?: number; resim?: number; mismatches?: number }

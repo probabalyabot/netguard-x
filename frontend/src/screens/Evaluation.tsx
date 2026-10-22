@@ -1,17 +1,22 @@
 import { Play, Upload } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { api } from "../api/client";
-import type { EvalResult, GatedArm } from "../api/types";
+import type { EvalJob, EvalResult, GatedArm } from "../api/types";
 import { ArmChart, LatencyChart, PhaseChart, ResimChart, ScalingChart, SpeedupChart, StepChart } from "../components/EvalCharts";
 import { Chip, Empty, Notice, PageHeader, Segmented, Spinner } from "../components/ui";
 import { config } from "../config";
-import { ARM_LABEL, ARM_ORDER, ARM_RULE, METRICS, parseEvalResult, phaseRows, runLabel } from "../lib/evalData";
+import { ARM_LABEL, ARM_ORDER, ARM_RULE, METRICS, devicesIn, parseEvalResult, phaseRows, runLabel } from "../lib/evalData";
 import { count, errMsg, ms, pct } from "../lib/format";
 
 interface Loaded { result: EvalResult; source: string; at: string; seconds?: number }
 let cache: Loaded | null = null; // survives navigation within the session; never persisted
+let activeJob: string | null = null; // a run still going on the server when the screen was left
 
-const SIZE_CHOICES = [1, 2, 4, 8];
+const SIZE_CHOICES = [2, 4, 8, 10, 12]; // sites; 8, 10 and 12 are the 50-75 device networks
+const sleep = (ms: number, signal: AbortSignal) => new Promise<void>((resolve, reject) => {
+  const t = setTimeout(resolve, ms);
+  signal.addEventListener("abort", () => { clearTimeout(t); reject(new DOMException("Aborted", "AbortError")); }, { once: true });
+});
 
 function Panel({ title, sub, children }: { title: string; sub?: string; children: React.ReactNode }) {
   return <section className="panel"><div className="panel-h"><h2 className="panel-title">{title}</h2>{sub && <span className="text-xs text-muted">{sub}</span>}</div><div className="p-4">{children}</div></section>;
@@ -22,6 +27,8 @@ export function Evaluation() {
   const [sizes, setSizes] = useState<number[]>([2, 4]);
   const [commands, setCommands] = useState(30);
   const [seed, setSeed] = useState(0);
+  const [repeats, setRepeats] = useState(1);
+  const [job, setJob] = useState<EvalJob | null>(null);
   const [fault, setFault] = useState(0.3);
   const [probes, setProbes] = useState(true);
   const [loaded, setLoaded] = useState<Loaded | null>(cache);
@@ -34,7 +41,8 @@ export function Evaluation() {
   const abort = useRef<AbortController | null>(null);
   const file = useRef<HTMLInputElement>(null);
 
-  useEffect(() => () => abort.current?.abort(), []);
+  // Leaving the screen stops polling, not the run: coming back picks the job up again.
+  useEffect(() => { if (activeJob) follow(activeJob); return () => abort.current?.abort(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!running) return;
     const t0 = Date.now(); const id = setInterval(() => setElapsed(Math.round((Date.now() - t0) / 1000)), 500);
@@ -44,15 +52,44 @@ export function Evaluation() {
   const toggle = (s: number) => setSizes((cur) => cur.includes(s) ? cur.filter((x) => x !== s) : cur.length >= lim.maxSizes ? cur : [...cur, s].sort((a, b) => a - b));
   const commit = (l: Loaded) => { cache = l; setLoaded(l); setStepSites(null); };
 
-  const run = async () => {
-    setError(null); setRunning(true); setElapsed(0);
+  /** Poll a background run until it finishes, showing its progress. */
+  const follow = async (id: string) => {
+    activeJob = id; setRunning(true); setError(null);
     abort.current = new AbortController();
-    const t0 = Date.now();
+    const signal = abort.current.signal;
     try {
-      const result = await api.evalRun({ sites: sizes, commands, seed, fault_rate: fault, probes }, abort.current.signal);
-      commit({ result, source: "Run just now on the API server", at: new Date().toISOString(), seconds: (Date.now() - t0) / 1000 });
-    } catch (e) { if ((e as Error).name !== "AbortError") setError(errMsg(e)); }
-    finally { setRunning(false); }
+      for (;;) {
+        const j = await api.evalJob(id, signal);
+        setJob(j);
+        if (j.status === "done" && j.result) {
+          commit({ result: j.result, source: "Run just now on the API server", at: new Date().toISOString(), seconds: j.elapsed_s });
+          break;
+        }
+        if (j.status === "failed") { setError(j.error ?? "The evaluation failed on the server."); break; }
+        if (j.status === "cancelled") { setError("The evaluation was cancelled."); break; }
+        await sleep(config.evalPollMs, signal);
+      }
+      activeJob = null;
+    } catch (e) {
+      if ((e as Error).name === "AbortError") return; // left the screen; the run continues
+      activeJob = null; setError(errMsg(e));
+    }
+    setRunning(false); setJob(null);
+  };
+
+  const run = async () => {
+    setError(null); setElapsed(0);
+    const seeds = Array.from({ length: repeats }, (_, i) => seed + i);
+    try {
+      const started = await api.evalJobStart({ sites: sizes, commands, seed, seeds, fault_rate: fault, probes });
+      setJob(started);
+      await follow(started.id);
+    } catch (e) { setError(errMsg(e)); }
+  };
+
+  const cancel = async () => {
+    if (!activeJob) return;
+    try { await api.evalJobCancel(activeJob); } catch (e) { setError(errMsg(e)); }
   };
 
   const importFile = async (f: File) => {
@@ -74,16 +111,17 @@ export function Evaluation() {
 
       <section className="panel mb-5">
         <div className="panel-h"><h2 className="panel-title">Run the harness</h2><span className="text-xs text-muted">on generated campus networks</span></div>
-        <div className="grid gap-4 p-4 md:grid-cols-[auto_1fr_auto] md:items-end">
+        <div className="grid gap-4 p-4 2xl:grid-cols-[auto_1fr_auto] 2xl:items-end">
           <div>
-            <span className="label">Network sizes (sites), up to {lim.maxSizes}</span>
+            <span className="label">Network sizes in devices (sites), up to {lim.maxSizes}</span>
             <div className="flex gap-1.5" role="group" aria-label="Network sizes">
-              {SIZE_CHOICES.map((s) => <button key={s} aria-pressed={sizes.includes(s)} onClick={() => toggle(s)} className={`btn !px-3 ${sizes.includes(s) ? "!border-net !bg-net/15 !text-net" : ""}`}>{s}</button>)}
+              {SIZE_CHOICES.map((s) => <button key={s} aria-pressed={sizes.includes(s)} onClick={() => toggle(s)} title={`${s} sites`} className={`btn !px-3 ${sizes.includes(s) ? "!border-net !bg-net/15 !text-net" : ""}`}>{devicesIn(s)}<span className="ml-1 text-xs text-faint">({s})</span></button>)}
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 lg:items-end">
             <div><label className="label" htmlFor="ev-n">Commands per network</label><input id="ev-n" className="field" type="number" min={lim.minCommands} max={lim.maxCommands} value={commands} onChange={(e) => setCommands(Math.min(lim.maxCommands, Math.max(lim.minCommands, Number(e.target.value) || lim.minCommands)))} /></div>
-            <div><label className="label" htmlFor="ev-s">Seed</label><input id="ev-s" className="field" type="number" value={seed} onChange={(e) => setSeed(Number(e.target.value) || 0)} /></div>
+            <div><label className="label" htmlFor="ev-s">First seed</label><input id="ev-s" className="field" type="number" value={seed} onChange={(e) => setSeed(Number(e.target.value) || 0)} /></div>
+            <div><label className="label" htmlFor="ev-r">Seeds (2+ for error bars)</label><input id="ev-r" className="field" type="number" min={1} max={lim.maxSeeds} value={repeats} onChange={(e) => setRepeats(Math.min(lim.maxSeeds, Math.max(1, Number(e.target.value) || 1)))} /></div>
             <div><label className="label" htmlFor="ev-f">Fault rate (0 to 1)</label><input id="ev-f" className="field" type="number" min={0} max={1} step={0.05} value={fault} onChange={(e) => setFault(Math.min(1, Math.max(0, Number(e.target.value) || 0)))} /></div>
             <label className="flex items-end gap-2 pb-2 text-sm"><input type="checkbox" checked={probes} onChange={(e) => setProbes(e.target.checked)} className="accent-[rgb(var(--net))]" />Exposure probes</label>
           </div>
@@ -94,8 +132,16 @@ export function Evaluation() {
           </div>
         </div>
         <div className="border-t border-line px-4 py-2.5 text-xs text-muted">
-          {running ? <span className="flex items-center gap-3"><Spinner label={`Running on the server… ${elapsed}s`} /><button className="btn btn-ghost !py-0.5 !text-xs" onClick={() => abort.current?.abort()}>Cancel</button></span>
-            : <>The API caps a run at {lim.maxSizes} sizes, up to {lim.maxSites} sites per network and {lim.maxCommands} commands so it stays interactive. The CLI has no cap: <code>python -m netguardx eval --sites 4 8 16 --commands 100 --seed 1 --out eval-results/run1</code>, then import <code>summary.json</code> here.</>}
+          {running ? (
+            <div className="flex flex-wrap items-center gap-3">
+              <Spinner label={job ? `${job.done.toLocaleString()} of ${job.total.toLocaleString()} command checks · ${Math.round(job.elapsed_s ?? elapsed)}s` : `Starting… ${elapsed}s`} />
+              <div className="h-1.5 min-w-[160px] flex-1 overflow-hidden rounded-full bg-raised" role="progressbar" aria-label="Evaluation progress" aria-valuemin={0} aria-valuemax={job?.total ?? 1} aria-valuenow={job?.done ?? 0}>
+                <div className="h-full bg-net transition-[width] duration-500" style={{ width: `${job && job.total ? (100 * job.done) / job.total : 0}%` }} />
+              </div>
+              <span className="tabular-nums">{job && job.total ? `${Math.floor((100 * job.done) / job.total)}%` : ""}</span>
+              <button className="btn btn-ghost !py-0.5 !text-xs" onClick={cancel}>Cancel</button>
+            </div>
+          ) : <>Runs on the API server in the background, one at a time; you can leave this screen and come back. The API caps a run at {lim.maxSizes} sizes, up to {lim.maxSites} sites ({devicesIn(lim.maxSites)} devices), {lim.maxCommands} commands and {lim.maxSeeds} seeds. Larger runs: <code>python -m netguardx eval --devices 50 63 75 --commands 100 --seeds 1 2 3 4 5 --out eval-results/run1</code>, then import <code>summary.json</code> here.</>}
         </div>
       </section>
 

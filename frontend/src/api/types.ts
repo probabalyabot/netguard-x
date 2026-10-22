@@ -147,4 +147,9 @@ export interface EvalResult {
   config: { sites: number[]; commands: number; seed: number; seeds?: number[]; fault_rate: number; probes: boolean; arms: ArmName[]; memory?: boolean };
   runs: EvalRun[]; steps?: EvalStep[]; scaling?: Partial<Record<GatedArm, ScalingArm>> | null;
 }
-export interface EvalRequest { sites: number[]; commands: number; seed: number; fault_rate: number; probes: boolean }
+export interface EvalRequest { sites: number[]; commands: number; seed: number; seeds?: number[]; fault_rate: number; probes: boolean }
+/** A background evaluation (POST /api/eval/jobs, GET /api/eval/jobs/{id}). */
+export interface EvalJob {
+  id: string; status: "running" | "done" | "failed" | "cancelled"; done: number; total: number; elapsed_s: number;
+  error?: string; result?: EvalResult;
+}
