@@ -70,6 +70,14 @@ def render_eval_report(result: dict[str, Any]) -> str:
         L += [f"| {n} | " + " | ".join(f"{p.get(k, 0):.3g}" for k in names) + " |" for n, p in rows]
         L.append("")
 
+    mem = [(r["nodes"], r["memory"]) for r in result["runs"] if r.get("memory")]
+    if mem:
+        L += ["## Memory", "", "Memory the incremental verifier keeps between commands (its cache), and the peak "
+              "while building it, measured with tracemalloc.", "",
+              "| Devices | Cache held | Peak while building |", "|---|---|---|"]
+        L += [f"| {n} | {m['cache_mb']} MB | {m['peak_mb']} MB |" for n, m in mem]
+        L.append("")
+
     sc = result.get("scaling")
     if sc:
         L += ["## Scaling", "",

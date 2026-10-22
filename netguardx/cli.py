@@ -53,6 +53,7 @@ def main(argv: list[str] | None = None) -> int:
     e.add_argument("--seeds", type=int, nargs="+", help="run every size once per seed; report means with 95%% CIs")
     e.add_argument("--fault-rate", type=float, default=0.3, help="share of commands drawn from fault classes")
     e.add_argument("--no-probes", action="store_true", help="skip exposure probes")
+    e.add_argument("--memory", action="store_true", help="also measure the incremental verifier's cache memory")
     e.add_argument("--out", help="directory for summary.json and steps.csv")
 
     args = ap.parse_args(argv)
@@ -64,7 +65,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.cmd == "eval":
             from .eval.run import format_summary, run_eval, write_results
             result = run_eval(args.sites, args.commands, args.seed, args.fault_rate, probes=not args.no_probes,
-                              seeds=args.seeds)
+                              seeds=args.seeds, memory=args.memory)
             print(format_summary(result))
             if args.out:
                 print(f"\nwrote {write_results(result, args.out)}")

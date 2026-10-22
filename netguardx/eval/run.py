@@ -29,7 +29,7 @@ from ..models import Network
 from ..network import NetworkState, static_issues
 from ..verify import verify_network
 from .commands import Command, generate_commands
-from .metrics import overhead, scaling
+from .metrics import cache_memory, overhead, scaling
 from .report import render_eval_report
 from .stats import mean_ci
 from .topologies import campus_network
@@ -163,7 +163,7 @@ def aggregate(summaries: list[dict[str, Any]]) -> dict[str, Any]:
 
 def run_eval(sites: list[int], commands: int = 200, seed: int = 0, fault_rate: float = 0.3,
              probes: bool = True, arms: tuple[str, ...] = ARMS,
-             seeds: Optional[list[int]] = None) -> dict[str, Any]:
+             seeds: Optional[list[int]] = None, memory: bool = False) -> dict[str, Any]:
     """Run every arm on every size.  With several ``seeds`` each size is replayed once per seed and
     the per-arm summaries are combined by ``aggregate``; ``per_seed`` keeps the individual ones."""
     seeds = list(seeds) if seeds else [seed]
@@ -185,9 +185,11 @@ def run_eval(sites: list[int], commands: int = 200, seed: int = 0, fault_rate: f
                "flows": len(net.flows), "policies": len(net.policies), "arms": arm_summaries,
                "per_seed": per_seed}
         run["overhead"] = overhead(run)
+        if memory:
+            run["memory"] = cache_memory(net, options)
         runs.append(run)
     return {"config": {"sites": sites, "commands": commands, "seed": seeds[0], "seeds": seeds,
-                       "fault_rate": fault_rate, "probes": probes, "arms": list(arms)},
+                       "fault_rate": fault_rate, "probes": probes, "arms": list(arms), "memory": memory},
             "runs": runs, "scaling": scaling(runs), "steps": steps}
 
 

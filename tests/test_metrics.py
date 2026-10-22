@@ -50,3 +50,21 @@ def test_a_real_run_writes_overhead_scaling_and_a_report(tmp_path):
     report = (out / "report.md").read_text(encoding="utf-8")
     for heading in ("## Safety", "## Overhead per command", "### Where the time goes", "## Scaling", "## Caveats"):
         assert heading in report
+
+
+def test_cache_memory_is_measured_and_grows_with_the_network():
+    from netguardx import AnalysisOptions
+    from netguardx.eval.metrics import cache_memory
+    from netguardx.eval.topologies import campus_network
+
+    small, large = (cache_memory(campus_network(n), AnalysisOptions(rollback=False)) for n in (1, 4))
+    assert 0 < small["cache_mb"] <= small["peak_mb"]
+    assert large["cache_mb"] > small["cache_mb"]
+
+
+def test_memory_is_only_measured_when_asked(tmp_path):
+    plain = run_eval([1], commands=5, arms=("incremental",))
+    assert "memory" not in plain["runs"][0] and plain["config"]["memory"] is False
+    measured = run_eval([1], commands=5, arms=("incremental",), memory=True)
+    assert measured["runs"][0]["memory"]["cache_mb"] > 0
+    assert "## Memory" in (write_results(measured, tmp_path) / "report.md").read_text(encoding="utf-8")

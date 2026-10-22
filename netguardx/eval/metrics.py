@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import math
+import tracemalloc
 from typing import Any, Optional
 
 import numpy as np
@@ -66,3 +67,19 @@ def scaling(runs: list[dict[str, Any]]) -> Optional[dict[str, Any]]:
             "projected": [{"devices": d, "ms_p50": round(predict(fit, d), 2)} for d in PROJECT_TO],
         }
     return out or None
+
+
+def cache_memory(network, options) -> dict[str, float]:
+    """Memory held by the incremental verifier's cache for ``network`` (it stays in memory between
+    commands) and the peak while building it, in MB, measured with tracemalloc."""
+    from ..incremental import IncrementalVerifier
+
+    tracemalloc.start()
+    try:
+        verifier = IncrementalVerifier()
+        verifier(network, [], options)  # an empty command builds the cache and nothing else
+        held, peak = tracemalloc.get_traced_memory()
+    finally:
+        tracemalloc.stop()
+    del verifier
+    return {"cache_mb": round(held / 2 ** 20, 2), "peak_mb": round(peak / 2 ** 20, 2)}
