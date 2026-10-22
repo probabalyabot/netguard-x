@@ -29,6 +29,8 @@ from ..models import Network
 from ..network import NetworkState, static_issues
 from ..verify import verify_network
 from .commands import Command, generate_commands
+from .metrics import overhead, scaling
+from .report import render_eval_report
 from .stats import mean_ci
 from .topologies import campus_network
 
@@ -179,18 +181,23 @@ def run_eval(sites: list[int], commands: int = 200, seed: int = 0, fault_rate: f
                 steps += [{"sites": size, "seed": s, **r} for r in rows]
             per_seed.append({"seed": s, "arms": results})
         arm_summaries = {arm: aggregate([p["arms"][arm] for p in per_seed]) for arm in arms}
-        runs.append({"sites": size, "nodes": len(net.nodes), "links": len(net.links), "routes": len(net.routes),
-                     "flows": len(net.flows), "policies": len(net.policies), "arms": arm_summaries,
-                     "per_seed": per_seed})
+        run = {"sites": size, "nodes": len(net.nodes), "links": len(net.links), "routes": len(net.routes),
+               "flows": len(net.flows), "policies": len(net.policies), "arms": arm_summaries,
+               "per_seed": per_seed}
+        run["overhead"] = overhead(run)
+        runs.append(run)
     return {"config": {"sites": sites, "commands": commands, "seed": seeds[0], "seeds": seeds,
                        "fault_rate": fault_rate, "probes": probes, "arms": list(arms)},
-            "runs": runs, "steps": steps}
+            "runs": runs, "scaling": scaling(runs), "steps": steps}
 
 
 def write_results(result: dict[str, Any], out_dir: str) -> Path:
+    """summary.json (everything but the per-step rows), steps.csv and a readable report.md."""
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
-    (out / "summary.json").write_text(json.dumps({"config": result["config"], "runs": result["runs"]}, indent=2))
+    summary = {k: v for k, v in result.items() if k != "steps"}
+    (out / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
+    (out / "report.md").write_text(render_eval_report(result), encoding="utf-8")
     with (out / "steps.csv").open("w", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=list(result["steps"][0]) if result["steps"] else ["sites"])
         w.writeheader()

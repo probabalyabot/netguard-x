@@ -27,7 +27,7 @@ def test_command_stream_is_seeded(net):
     assert all(c.intent in BENIGN for c in generate_commands(net, 20, seed=3, fault_rate=0))
 
 
-TIMING = ("check_ms", "commands_per_s", "phases_ms", "commit_ms")
+TIMING = ("check_ms", "commands_per_s", "phases_ms", "commit_ms", "overhead")
 
 
 def _strip(value):

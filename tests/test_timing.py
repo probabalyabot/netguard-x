@@ -12,8 +12,9 @@ def test_full_verification_records_its_phases(net):
     r = analyze(net, load_change("route-via-r3"), AnalysisOptions(rollback=False))
     phases = r.meta["phases_ms"]
     assert set(phases) == FULL_PHASES and all(v >= 0 for v in phases.values())
-    # the phases cover the whole call; duration_ms is taken just before assess finishes
-    assert sum(phases.values()) >= r.meta["duration_ms"]
+    # the phases cover the whole call; duration_ms is taken just before assess finishes and is
+    # rounded to 0.1 ms, so allow for that rounding
+    assert sum(phases.values()) >= r.meta["duration_ms"] - 0.05
 
 
 def test_incremental_verification_records_its_phases(net):
