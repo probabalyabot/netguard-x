@@ -201,7 +201,7 @@ def write_results(result: dict[str, Any], out_dir: str) -> Path:
 def format_summary(result: dict[str, Any]) -> str:
     c = result["config"]
     seeds = c.get("seeds", [c["seed"]])
-    seed_txt = f"seed {seeds[0]}" if len(seeds) == 1 else f"seeds {', '.join(map(str, seeds))} (means, ± 95% CI)"
+    seed_txt = f"seed {seeds[0]}" if len(seeds) == 1 else f"seeds {', '.join(map(str, seeds))} (means, +/- 95% CI)"
     L = [f"{c['commands']} commands per network, {seed_txt}, fault rate {c['fault_rate']}, "
          f"probes {'on' if c['probes'] else 'off'}", ""]
     head = ("sites", "nodes", "arm", "executed", "rejected", "held", "invalid", "unsafe_exec", "safe_rej",
@@ -210,8 +210,9 @@ def format_summary(result: dict[str, Any]) -> str:
     for run in result["runs"]:
         for arm, s in run["arms"].items():
             gated = s["resim_share"] is not None
-            vals = (run["sites"], run["nodes"], arm, s["executed"], s["rejected"], s["held"], s["invalid"],
-                    s["unsafe_executed"], s["safe_rejected"], s["unhealthy_steps"],
+            counts = [f"{s[k]:.4g}" for k in ("executed", "rejected", "held", "invalid",
+                                                "unsafe_executed", "safe_rejected", "unhealthy_steps")]
+            vals = (run["sites"], run["nodes"], arm, *counts,
                     s["mismatches"] if gated else "-", f"{s['resim_share']:.1%}" if gated else "-",
                     _with_ci(s, "check_ms_p50"), _with_ci(s, "check_ms_p95"))
             L.append("  ".join(f"{v:>12}" for v in vals))
@@ -220,4 +221,4 @@ def format_summary(result: dict[str, Any]) -> str:
 
 def _with_ci(s: dict[str, Any], key: str) -> str:
     half = s.get(f"{key}_ci95")
-    return f"{s[key]:g}" if half is None else f"{s[key]:g}±{half:.2g}"
+    return f"{s[key]:.3g}" if half is None else f"{s[key]:.3g}+/-{half:.2g}"
