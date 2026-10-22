@@ -92,3 +92,43 @@ def test_eval_run_is_bounded_and_returns_harness_result():
     assert set(body["runs"][0]["arms"]) == {"none", "lint", "reachability", "full", "incremental"}
     assert client.post("/api/eval/run", json={"sites": [64]}).status_code == 422
     assert client.post("/api/eval/run", json={"commands": 5000}).status_code == 422
+
+
+def _wait(job_id, timeout=120):
+    import time
+
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        job = client.get(f"/api/eval/jobs/{job_id}").json()
+        if job["status"] != "running":
+            return job
+        time.sleep(0.2)
+    raise AssertionError(f"job {job_id} still running after {timeout}s")
+
+
+def test_eval_job_runs_in_the_background_and_reports_progress():
+    r = client.post("/api/eval/jobs", json={"sites": [1], "commands": 5, "seeds": [1, 2]})
+    assert r.status_code == 202
+    start = r.json()
+    assert start["status"] == "running" and start["total"] == 1 * 2 * 5 * 5  # sizes x seeds x arms x commands
+    job = _wait(start["id"])
+    assert job["status"] == "done" and job["done"] == job["total"]
+    assert job["result"]["config"]["seeds"] == [1, 2] and job["result"]["runs"][0]["sites"] == 1
+
+
+def test_one_eval_job_at_a_time_and_cancelling_it():
+    slow = client.post("/api/eval/jobs", json={"sites": [12], "commands": 100, "seeds": [1, 2, 3, 4, 5]}).json()
+    try:
+        busy = client.post("/api/eval/jobs", json={"sites": [1], "commands": 5})
+        assert busy.status_code == 409 and "already running" in busy.json()["detail"]
+    finally:
+        assert client.post(f"/api/eval/jobs/{slow['id']}/cancel").status_code == 200
+    job = _wait(slow["id"])
+    assert job["status"] == "cancelled" and job["done"] < job["total"] and "result" not in job
+
+
+def test_eval_job_errors():
+    assert client.get("/api/eval/jobs/nope").status_code == 404
+    assert client.post("/api/eval/jobs/nope/cancel").status_code == 404
+    assert client.post("/api/eval/jobs", json={"sites": [13]}).status_code == 422  # 12 sites (76 devices) is the cap
+    assert client.post("/api/eval/jobs", json={"sites": [1], "seeds": [1, 2, 3, 4, 5, 6]}).status_code == 422

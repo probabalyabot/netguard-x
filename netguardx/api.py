@@ -5,13 +5,14 @@ import json
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field, field_validator
 
 from . import __version__
 from .changes import ChangeError
+from .eval.jobs import Busy, JobStore
 from .impact import AnalysisOptions, _topology, analyze, layout_topology
 from .models import Change, Network
 from .nlp import interpret
@@ -21,7 +22,7 @@ from .verify import verify_network
 
 HERE = Path(__file__).parent
 EXAMPLES = HERE / "examples"
-EVAL_MAX_SITES = 8
+EVAL_MAX_SITES = 12  # 76 devices; larger networks belong to the CLI
 FRONTEND_DIST = HERE.parent / "frontend" / "dist"
 
 app = FastAPI(title="NetGuard-X", version=__version__,
@@ -41,12 +42,22 @@ class SimulateRequest(BaseModel):
 
 
 class EvalRequest(BaseModel):
-    """Bounded so a single request stays interactive. The CLI has no such limits."""
+    """Bounded so a run finishes in minutes. The CLI has no such limits."""
     sites: list[int] = Field(default_factory=lambda: [2, 4], min_length=1, max_length=4)
     commands: int = Field(30, ge=5, le=100)
     seed: int = 0
+    seeds: Optional[list[int]] = Field(None, min_length=1, max_length=5)
     fault_rate: float = Field(0.3, ge=0, le=1)
     probes: bool = True
+
+    def run(self, progress=None) -> dict:
+        from .eval.run import run_eval
+        return run_eval(self.sites, self.commands, self.seed, self.fault_rate, probes=self.probes,
+                        seeds=self.seeds, progress=progress)
+
+    def total(self) -> int:
+        from .eval.run import ARMS
+        return len(self.sites) * len(self.seeds or [self.seed]) * len(ARMS) * self.commands
 
     @field_validator("sites")
     @classmethod
@@ -131,8 +142,36 @@ def interpret_text(req: InterpretRequest):
 def eval_run(req: EvalRequest):
     """Run the evaluation harness (netguardx.eval) and return its result unchanged:
     config, one entry per network size with per-arm summaries, and per-step rows."""
-    from .eval.run import run_eval
-    return run_eval(req.sites, req.commands, req.seed, req.fault_rate, probes=req.probes)
+    return req.run()
+
+
+JOBS = JobStore()
+
+
+@app.post("/api/eval/jobs", status_code=202)
+def eval_job_start(req: EvalRequest):
+    """Start an evaluation in the background. Poll GET /api/eval/jobs/{id} for progress and the result."""
+    try:
+        return JOBS.start(req.total(), req.run)
+    except Busy as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@app.get("/api/eval/jobs/{job_id}")
+def eval_job_get(job_id: str):
+    """Status (running, done, failed, cancelled), commands replayed so far, and the result when done."""
+    job = JOBS.get(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail=f"no evaluation job {job_id}")
+    return job
+
+
+@app.post("/api/eval/jobs/{job_id}/cancel")
+def eval_job_cancel(job_id: str):
+    job = JOBS.cancel(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail=f"no evaluation job {job_id}")
+    return job
 
 
 @app.get("/")

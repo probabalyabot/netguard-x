@@ -62,8 +62,8 @@ def _pct(values: list[float], q: float) -> float:
     return round(s[min(len(s) - 1, int(q * len(s)))], 3)
 
 
-def run_arm(arm: str, network: Network, commands: list[Command],
-            options: AnalysisOptions) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+def run_arm(arm: str, network: Network, commands: list[Command], options: AnalysisOptions,
+            tick: Optional[Callable[[], None]] = None) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     gk = None
     if arm in ("full", "incremental"):
         verifier = IncrementalVerifier() if arm == "incremental" else full_verifier
@@ -126,6 +126,8 @@ def run_arm(arm: str, network: Network, commands: list[Command],
         rows.append({"arm": arm, "step": cmd.step, "intent": cmd.intent, "operation": cmd.changes[0].operation,
                      "oracle": verdict, "outcome": outcome, "check_ms": ms, "resim_share": share,
                      "healthy": healthy})
+        if tick is not None:
+            tick()
 
     mean_ms = round(sum(times) / len(times), 3) if times else 0.0
     summary = {"commands": len(commands), **n,
@@ -175,10 +177,18 @@ def full_probe_limit(net: Network) -> int:
 def run_eval(sites: list[int], commands: int = 200, seed: int = 0, fault_rate: float = 0.3,
              probes: bool = True, arms: tuple[str, ...] = ARMS,
              seeds: Optional[list[int]] = None, memory: bool = False,
-             users_per_site: int = 1, probe_limit: Optional[int] = None) -> dict[str, Any]:
+             users_per_site: int = 1, probe_limit: Optional[int] = None,
+             progress: Optional[Callable[[int, int], None]] = None) -> dict[str, Any]:
     """Run every arm on every size.  With several ``seeds`` each size is replayed once per seed and
     the per-arm summaries are combined by ``aggregate``; ``per_seed`` keeps the individual ones."""
     seeds = list(seeds) if seeds else [seed]
+    total, done = len(sites) * len(seeds) * len(arms) * commands, 0
+
+    def tick() -> None:  # one command replayed through one arm
+        nonlocal done
+        done += 1
+        if progress is not None:
+            progress(done, total)
     runs: list[dict[str, Any]] = []
     steps: list[dict[str, Any]] = []
     for size in sites:
@@ -190,7 +200,7 @@ def run_eval(sites: list[int], commands: int = 200, seed: int = 0, fault_rate: f
             stream = generate_commands(net, commands, seed=s, fault_rate=fault_rate)
             results = {}
             for arm in arms:
-                results[arm], rows = run_arm(arm, net, stream, options)
+                results[arm], rows = run_arm(arm, net, stream, options, tick)
                 steps += [{"sites": size, "seed": s, **r} for r in rows]
             per_seed.append({"seed": s, "arms": results})
         arm_summaries = {arm: aggregate([p["arms"][arm] for p in per_seed]) for arm in arms}
