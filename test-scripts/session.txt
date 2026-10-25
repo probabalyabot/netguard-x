@@ -1,0 +1,31 @@
+# A typed session against the built-in three-tier network (netguardx/examples/basic.json).
+#   python -m netguardx session netguardx/examples/basic.json test-scripts/session.txt
+# Each line is drafted against the network as it is after the lines before it, then proposed to the
+# gatekeeper as the AI agent. Lines starting with # are comments.
+
+# pass-01, pass-03, pass-04: safe, executed
+set the metric of R1's default route to 50
+cable R2 to R3
+deny postgres from USER to DB on FW
+
+# review-01: behaviour changes, nothing breaks: held for a person
+cable the firewall straight to the backup server
+
+# fail-01 .. fail-06: rejected, the network is untouched
+change R1's route for 10.0.5.0/24 from R2 to R3
+change the route on R2 for DB from FW to R1
+remove the default route on FW
+decommission the link between R1 and R2
+allow everything from any to any on FW at the top
+block postgres from APP to DB on FW at the top
+
+# config-style input: the header applies to the lines below it
+R1(config)#
+ip route 10.0.7.0 255.255.255.0 R3
+no ip route 10.0.7.0 255.255.255.0 R3
+
+# the agent may not change requirements (the policy lock)
+USER must never reach DB
+
+# a typo is refused with a suggestion, never applied to the header's device
+block ssh from USER to DB on FWW
