@@ -54,7 +54,7 @@ def parse(clause: Clause, lex: Lexicon) -> Result:
 
 
 def _device(t: str, clause: Clause, lex: Lexicon) -> Optional[str]:
-    return lex.after(t, "on|at") or clause.device
+    return lex.after(t, "on|at") or lex.inherited(clause.device, t)
 
 
 def _endpoint(t: str, word: str, lex: Lexicon) -> Optional[str]:
@@ -96,7 +96,7 @@ def _add(t: str, clause: Clause, lex: Lexicon) -> Result:
 
 
 def _delete(t: str, clause: Clause, lex: Lexicon) -> Result:
-    node = lex.after(t, "on|at|from") or clause.device
+    node = lex.after(t, "on|at|from") or lex.inherited(clause.device, t)
     if node is None:
         return None, "say which device the rule is on ('delete rule 2 on FW')"
     rules = [a for a in lex.net.acls if a.node == node]

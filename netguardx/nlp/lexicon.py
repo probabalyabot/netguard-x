@@ -213,6 +213,12 @@ class Lexicon:
             out.append((word, self.names[close[0]] if close else None))
         return out
 
+    def inherited(self, device: Optional[str], text: str) -> Optional[str]:
+        """The device from a config header, for a line that names none itself.  Withheld when the line
+        names something that is not a device: "block ssh ... on FWW" under an R1 header must fail as a
+        typo, not quietly put the rule on R1."""
+        return None if self.unknown_names(text) else device
+
     def unknown_reason(self, text: str) -> Optional[str]:
         """"unknown device R22 (did you mean R2?)" for the first name-shaped word that names no device.
         When a clause fails and contains one, that is the likelier problem than the grammar."""

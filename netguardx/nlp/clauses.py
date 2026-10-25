@@ -28,6 +28,16 @@ class Clause:
     device: Optional[str] = None  # from the nearest header above, when the line names none itself
 
 
+def header_device(line: str, device_of) -> Optional[str]:
+    """The device a config header line names (``R1(config)#``, ``R1#``, ``on R1:``, ``configure R1``),
+    with or without a command after it; None when the line is not a header."""
+    for pattern in (_PROMPT, _ON_DEVICE, _CONFIGURE):
+        m = pattern.match(line)
+        if m and (dev := device_of(m.group(1))):
+            return dev
+    return None
+
+
 def split_clauses(text: str) -> list[str]:
     """Sentence ends (not the dots inside addresses), semicolons, line breaks, commas or "but" that
     join two requests, and "then".  A bare "and" never splits ("connect R2 and R3" is one clause)."""

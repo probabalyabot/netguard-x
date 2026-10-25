@@ -62,8 +62,26 @@ def main(argv: list[str] | None = None) -> int:
     e.add_argument("--memory", action="store_true", help="also measure the incremental verifier's cache memory")
     e.add_argument("--out", help="directory for summary.json and steps.csv")
 
+    d = sub.add_parser("draft", help="turn typed config changes into checked changes (exit 2 if not all understood)")
+    d.add_argument("network")
+    d.add_argument("text", nargs="?", help="the change, e.g. \"block ssh from USER to DB on FW\"")
+    d.add_argument("--file", help="read the text from a file instead (several lines, Cisco blocks)")
+    d.add_argument("--analyze", action="store_true", help="analyse the drafted changes and print the report")
+    d.add_argument("--json", action="store_true", help="with --analyze: the full JSON report instead of Markdown")
+
+    se = sub.add_parser("session", help="run typed commands, one per line, through the gatekeeper")
+    se.add_argument("network")
+    se.add_argument("commands", help="a text file with one command per line, or - to type them")
+    se.add_argument("--operator", action="store_true",
+                    help="propose as a person (policy edits allowed) instead of as the AI agent")
+    se.add_argument("--out", help="write the session log as JSON to this file")
+
     args = ap.parse_args(argv)
     try:
+        if args.cmd == "draft":
+            return _draft(args)
+        if args.cmd == "session":
+            return _session(args)
         if args.cmd == "serve":
             import uvicorn
             uvicorn.run("netguardx.api:app", host=args.host, port=args.port)
@@ -97,6 +115,54 @@ def main(argv: list[str] | None = None) -> int:
     except (ChangeError, ValueError, OSError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return EXIT_ERROR
+
+
+def _draft(args) -> int:
+    from .nlp import interpret
+    from .pipeline import drafted
+
+    if (args.text is None) == (args.file is None):
+        raise ValueError("give the change as text or with --file, not both")
+    text = Path(args.file).read_text(encoding="utf-8") if args.file else args.text
+    net = _load_network(args.network)
+    r = interpret(text, net)
+    if not args.analyze:
+        print(json.dumps(r, indent=2))
+        return EXIT_OK if r["matched"] and not r["unparsed"] else EXIT_ERROR
+    if r["unparsed"] or not r["matched"]:
+        for u in r["unparsed"]:
+            print(f"not understood: {u['text']!r}: {u['reason']}", file=sys.stderr)
+        if not r["matched"] and not r["unparsed"]:
+            print("nothing to analyse", file=sys.stderr)
+        return EXIT_ERROR
+    for m in r["matched"]:
+        print(f"understood: {m['text']!r} = {m['understood_as']}", file=sys.stderr)
+    report = analyze(net, drafted(r))
+    print(json.dumps(report.model_dump(mode="json"), indent=2) if args.json else render_markdown(report))
+    return EXIT_UNSAFE if report.verdict["decision"] == "NOT_RECOMMENDED" else EXIT_OK
+
+
+def _session(args) -> int:
+    from .pipeline import Session, format_entry
+
+    session = Session(_load_network(args.network), operator=args.operator)
+    interactive = args.commands == "-" and sys.stdin.isatty()
+    source = sys.stdin if args.commands == "-" else Path(args.commands).read_text(encoding="utf-8").splitlines()
+    print(f"session on {args.network} as {'an operator' if args.operator else 'the AI agent'}"
+          + (" (type commands, Ctrl+Z then Enter to finish)" if interactive else ""), flush=True)
+    for number, line in enumerate(source, 1):
+        entry = session.feed(line, number)
+        if entry:
+            print(format_entry(entry), flush=True)
+    s = session.summary()
+    print(f"\n{s['commands']} commands: " + ", ".join(f"{s[o]} {o.lower()}" for o in
+                                                    ("EXECUTED", "HELD", "REJECTED", "INVALID", "NOT UNDERSTOOD"))
+          + f"; {s['checkpoints']} checkpoints, model version {s['model_version']}"
+          + (f"; held: {', '.join(map(str, s['held']))}" if s["held"] else ""))
+    if args.out:
+        Path(args.out).write_text(json.dumps({"network": args.network, "summary": s, "entries": session.entries},
+                                             indent=2), encoding="utf-8")
+    return EXIT_OK
 
 
 if __name__ == "__main__":

@@ -76,7 +76,7 @@ def _english(t: str, clause: Clause, lex: Lexicon) -> Result:
     moved = _FROM_TO.search(t)
     if moved and lex.device(moved.group(1)) and lex.device(moved.group(2)):
         old_next_hop, next_hop = lex.device(moved.group(1)), lex.device(moved.group(2))
-    router = router or lex.after(t, "on|at|in") or _possessive(t, lex) or clause.device
+    router = router or lex.after(t, "on|at|in") or _possessive(t, lex) or lex.inherited(clause.device, t)
     if router is None:
         return None, "a route change needs a device ('on R1')"
 
@@ -136,7 +136,7 @@ def _english(t: str, clause: Clause, lex: Lexicon) -> Result:
 
 
 def _cisco(negated: bool, args: str, clause: Clause, lex: Lexicon) -> Result:
-    router = clause.device or lex.after(args, "on")
+    router = lex.after(args, "on") or lex.inherited(clause.device, args)
     if router is None:
         return None, "a Cisco line needs a device: start with 'R1(config)#' or put 'on R1:' in front"
     span = prefix_span(args)
