@@ -1,10 +1,27 @@
-"""Reachability requirements ("APP must reach DB through FW"), drafted as policies."""
+"""Reachability requirements ("APP must reach DB through FW"), drafted as policies, and deleting a
+policy by its id ("delete policy P3")."""
 from __future__ import annotations
 
 import re
-from typing import Any
+from typing import Any, Optional
 
+from ..models import Network
 from .lexicon import after, nodes_in
+
+_DELETE = re.compile(r"\b(?:delete|remove|drop|retire)\s+(?:the\s+)?(?:policy|requirement)\s+#?([\w-]+)", re.I)
+
+
+def claims_delete(low: str) -> bool:
+    return bool(_DELETE.search(low))
+
+
+def parse_delete(clause: str, net: Network) -> tuple[Optional[dict], Optional[str]]:
+    wanted = _DELETE.search(clause).group(1)
+    ids = {p.id.lower(): p.id for p in net.policies if p.id}
+    if wanted.lower() in ids:
+        return {"operation": "DELETE_POLICY", "policy_id": ids[wanted.lower()]}, None
+    known = ", ".join(sorted(ids.values())) or "none"
+    return None, f"no policy {wanted} (policies: {known})"
 
 
 def parse(clause: str, lookup: dict[str, str]) -> tuple[dict | None, str | None]:
