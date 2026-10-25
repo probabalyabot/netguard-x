@@ -27,7 +27,7 @@ import re
 from typing import Any, Optional
 
 from .clauses import Clause
-from .lexicon import LexError, Lexicon, number_after, prefix_span
+from .lexicon import IP, LexError, Lexicon, number_after, prefix_span
 
 _CISCO = re.compile(r"^\s*(no\s+)?ip\s+route\s+(.*)$", re.I)
 _POINT = re.compile(r"\bpoint\s+(\S+)\s+(?:at|to)\s+(\S+)", re.I)
@@ -36,6 +36,8 @@ _POSSESSIVE = re.compile(r"([A-Za-z0-9_.-]+)'s\b")
 _TRAFFIC_OF = re.compile(r"([A-Za-z0-9_.-]+)\s+(?:traffic|packets)\b", re.I)
 
 NEXT_HOP = r"via|through|use|using|next[- ]hop(?: to| of| is)?"
+# a bare address after a router or next-hop word is a device, never the destination prefix
+_DEVICE_ADDRESSES = re.compile(rf"\b(?:on|at|in|{NEXT_HOP})\s+{IP}(?![\d./])(?!\s+255\.)", re.I)
 _DELETE = re.compile(r"\b(delete|remove|drop|withdraw)\b")
 _ADD = re.compile(r"\b(add|create|new|install)\b")
 _CHANGE = re.compile(r"\b(change|modify|set|update|move|point|redirect|switch|reroute|send|forward)\b|^\s*route\b")
@@ -78,7 +80,7 @@ def _english(t: str, clause: Clause, lex: Lexicon) -> Result:
     if router is None:
         return None, "a route change needs a device ('on R1')"
 
-    span = prefix_span(t)
+    span = prefix_span(_DEVICE_ADDRESSES.sub(" ", t))  # "on 10.255.0.1" names the router, not a destination
     prefix = span[0] if span else ("0.0.0.0/0" if re.search(r"\bdefault route\b", low) else None)
     if next_hop is None:
         next_hop = lex.after(t, NEXT_HOP, last=True)
