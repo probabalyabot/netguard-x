@@ -9,6 +9,7 @@ does not recognise is returned in ``unparsed`` rather than guessed at.
 
     clauses.py   split the text into clauses; device context from config-style headers
     lexicon.py   devices, addresses, prefixes, services, numbers, typo suggestions
+    acls.py      add / delete an ACL rule
     links.py     add / remove a link
     routes.py    add / delete / modify a route, change a metric; Cisco ``ip route`` lines
     policies.py  reachability requirements, drafted as policies
@@ -18,7 +19,7 @@ from __future__ import annotations
 from typing import Any
 
 from ..models import Network
-from . import links, policies, routes
+from . import acls, links, policies, routes
 from .clauses import Clause, split
 from .lexicon import Lexicon
 
@@ -26,10 +27,12 @@ _NOT_A_CHANGE = "not a route or link change"
 
 
 def _parse_change(clause: Clause, lex: Lexicon) -> tuple[dict | None, str | None]:
-    t = clause.text.strip()
-    low = t.lower()
+    """ACL rules first: their sentences use "from", "to" and device names like routes and links do."""
+    low = clause.text.strip().lower()
+    if acls.claims(low):
+        return acls.parse(clause, lex)
     if links.claims(low):
-        return links.parse(t, lex.names)
+        return links.parse(clause, lex)
     if routes.claims(low):
         return routes.parse(clause, lex)
     return None, _NOT_A_CHANGE
@@ -60,5 +63,6 @@ def interpret(text: str, net: Network) -> dict[str, Any]:
         "unparsed": unparsed,
         "needs_review": True,
         "note": "Review the structured result before analysing. This parser understands route changes "
-                "(plain English or Cisco ip route lines), links and reachability requirements.",
+                "(plain English or Cisco ip route lines), links, ACL rules and reachability "
+                "requirements.",
     }

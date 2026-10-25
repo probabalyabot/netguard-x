@@ -15,7 +15,7 @@
    "policies": [],
    "unparsed": [],
    "needs_review": true,
-   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links and reachability requirements."
+   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links, ACL rules and reachability requirements."
   }
  },
  {
@@ -34,7 +34,7 @@
    "policies": [],
    "unparsed": [],
    "needs_review": true,
-   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links and reachability requirements."
+   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links, ACL rules and reachability requirements."
   }
  },
  {
@@ -53,7 +53,7 @@
    "policies": [],
    "unparsed": [],
    "needs_review": true,
-   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links and reachability requirements."
+   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links, ACL rules and reachability requirements."
   }
  },
  {
@@ -72,7 +72,7 @@
    "policies": [],
    "unparsed": [],
    "needs_review": true,
-   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links and reachability requirements."
+   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links, ACL rules and reachability requirements."
   }
  },
  {
@@ -90,7 +90,7 @@
    "policies": [],
    "unparsed": [],
    "needs_review": true,
-   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links and reachability requirements."
+   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links, ACL rules and reachability requirements."
   }
  },
  {
@@ -109,7 +109,7 @@
    "policies": [],
    "unparsed": [],
    "needs_review": true,
-   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links and reachability requirements."
+   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links, ACL rules and reachability requirements."
   }
  },
  {
@@ -128,7 +128,7 @@
    "policies": [],
    "unparsed": [],
    "needs_review": true,
-   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links and reachability requirements."
+   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links, ACL rules and reachability requirements."
   }
  },
  {
@@ -147,7 +147,7 @@
    "policies": [],
    "unparsed": [],
    "needs_review": true,
-   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links and reachability requirements."
+   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links, ACL rules and reachability requirements."
   }
  },
  {
@@ -165,7 +165,7 @@
    "policies": [],
    "unparsed": [],
    "needs_review": true,
-   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links and reachability requirements."
+   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links, ACL rules and reachability requirements."
   }
  },
  {
@@ -183,7 +183,7 @@
    "policies": [],
    "unparsed": [],
    "needs_review": true,
-   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links and reachability requirements."
+   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links, ACL rules and reachability requirements."
   }
  },
  {
@@ -201,7 +201,7 @@
    "policies": [],
    "unparsed": [],
    "needs_review": true,
-   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links and reachability requirements."
+   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links, ACL rules and reachability requirements."
   }
  },
  {
@@ -219,7 +219,7 @@
    "policies": [],
    "unparsed": [],
    "needs_review": true,
-   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links and reachability requirements."
+   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links, ACL rules and reachability requirements."
   }
  },
  {
@@ -246,7 +246,7 @@
    ],
    "unparsed": [],
    "needs_review": true,
-   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links and reachability requirements."
+   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links, ACL rules and reachability requirements."
   }
  },
  {
@@ -266,7 +266,7 @@
    ],
    "unparsed": [],
    "needs_review": true,
-   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links and reachability requirements."
+   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links, ACL rules and reachability requirements."
   }
  },
  {
@@ -285,7 +285,7 @@
    ],
    "unparsed": [],
    "needs_review": true,
-   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links and reachability requirements."
+   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links, ACL rules and reachability requirements."
   }
  },
  {
@@ -302,7 +302,7 @@
     }
    ],
    "needs_review": true,
-   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links and reachability requirements."
+   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links, ACL rules and reachability requirements."
   }
  },
  {
@@ -319,7 +319,7 @@
     }
    ],
    "needs_review": true,
-   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links and reachability requirements."
+   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links, ACL rules and reachability requirements."
   }
  },
  {
@@ -336,7 +336,7 @@
     }
    ],
    "needs_review": true,
-   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links and reachability requirements."
+   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links, ACL rules and reachability requirements."
   }
  },
  {
@@ -353,7 +353,7 @@
     }
    ],
    "needs_review": true,
-   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links and reachability requirements."
+   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links, ACL rules and reachability requirements."
   }
  },
  {
@@ -370,7 +370,7 @@
     }
    ],
    "needs_review": true,
-   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links and reachability requirements."
+   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links, ACL rules and reachability requirements."
   }
  },
  {
@@ -394,7 +394,7 @@
    "policies": [],
    "unparsed": [],
    "needs_review": true,
-   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links and reachability requirements."
+   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links, ACL rules and reachability requirements."
   }
  },
  {
@@ -418,7 +418,7 @@
    "policies": [],
    "unparsed": [],
    "needs_review": true,
-   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links and reachability requirements."
+   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links, ACL rules and reachability requirements."
   }
  },
  {
@@ -444,7 +444,7 @@
    ],
    "unparsed": [],
    "needs_review": true,
-   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links and reachability requirements."
+   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links, ACL rules and reachability requirements."
   }
  },
  {
@@ -463,7 +463,7 @@
    "policies": [],
    "unparsed": [],
    "needs_review": true,
-   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links and reachability requirements."
+   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links, ACL rules and reachability requirements."
   }
  }
 ]

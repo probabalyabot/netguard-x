@@ -213,6 +213,13 @@ class Lexicon:
             out.append((word, self.names[close[0]] if close else None))
         return out
 
+    def unknown_reason(self, text: str) -> Optional[str]:
+        """"unknown device R22 (did you mean R2?)" for the first name-shaped word that names no device.
+        When a clause fails and contains one, that is the likelier problem than the grammar."""
+        for word, suggestion in self.unknown_names(text):
+            return f"unknown device {word}" + (f" (did you mean {suggestion}?)" if suggestion else "")
+        return None
+
     def route_covering(self, router: str, device: str) -> Optional[str]:
         """The prefix of ``router``'s most specific static route that contains ``device``'s address."""
         node = next((n for n in self.net.nodes if n.id == device), None)

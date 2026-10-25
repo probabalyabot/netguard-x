@@ -61,15 +61,8 @@ def parse(clause: Clause, lex: Lexicon) -> Result:
     except LexError as exc:
         ch, why = None, str(exc)
     if ch is None:
-        why = _unknown_device(t, lex) or why
+        why = lex.unknown_reason(t) or why
     return ch, why
-
-
-def _unknown_device(t: str, lex: Lexicon) -> Optional[str]:
-    """When a clause fails and names something that is not a device, that is the likelier problem."""
-    for word, suggestion in lex.unknown_names(t):
-        return f"unknown device {word}" + (f" (did you mean {suggestion}?)" if suggestion else "")
-    return None
 
 
 def _english(t: str, clause: Clause, lex: Lexicon) -> Result:
