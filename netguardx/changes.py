@@ -115,7 +115,7 @@ def _apply_one(net: Network, ch: Change, index: int) -> tuple[Change, Effect]:
         else:
             k = ch.rule_index
             if k is None or not (0 <= k < len(rules_here)):
-                raise ChangeError(f"DELETE_ACL_RULE: {node} has no rule #{k}")
+                raise ChangeError(f"DELETE_ACL_RULE: {node} has no rule_index {k} (it has {len(rules_here)} rules)")
         removed = net.acls.pop(rules_here[k])
         inv = Change(operation="ADD_ACL_RULE", rule=removed, position=k)
         return inv, Effect(index=index, kind="acl", nodes=[node], label=ch.describe())

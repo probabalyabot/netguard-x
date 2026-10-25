@@ -320,7 +320,7 @@ class Change(BaseModel):
         if op == "DELETE_ACL_RULE":
             if self.rule:
                 return f"Delete ACL rule on {self.rule.node}: {self.rule.describe()}"
-            return f"Delete ACL rule #{self.rule_index} on {self.node}"
+            return f"Delete ACL rule {self.rule_index + 1} on {self.node}"  # people count rules from 1
         if op == "ADD_POLICY" and self.policy:
             return f"Add policy: {self.policy.describe()}"
         if op == "DELETE_POLICY":

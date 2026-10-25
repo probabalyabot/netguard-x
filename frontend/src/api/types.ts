@@ -114,7 +114,9 @@ export interface ChangeReport {
 // ----- /api/interpret
 export interface InterpretResponse {
   parser: string; kind: string; changes: Change[]; policies: Policy[];
-  unparsed: { text: string; reason: string | null }[]; needs_review: boolean; note: string;
+  unparsed: { text: string; reason: string | null; suggestion?: string }[]; needs_review: boolean; note: string;
+  /** Each accepted sentence and its draft, in the order written (newer APIs only). */
+  matched?: { text: string; kind: "change" | "policy"; index: number; understood_as: string }[];
 }
 
 // ----- /api/eval/run (and summary.json written by `python -m netguardx eval --out`)

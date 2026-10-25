@@ -6,6 +6,7 @@ import { ChangeBuilder } from "../components/ChangeBuilder";
 import { ResultSummary } from "../components/ResultSummary";
 import { Empty, Notice, PageHeader, Segmented, Spinner } from "../components/ui";
 import { describeChange } from "../lib/describe";
+import { draftedChanges, replaceWord, typoFix, withDraft } from "../lib/drafts";
 import { errMsg } from "../lib/format";
 import { validateChanges } from "../lib/validate";
 import { DEFAULT_WEIGHTS, useApp } from "../state/AppState";
@@ -40,37 +41,80 @@ function JsonEditor() {
   );
 }
 
+const DRAFT_EXAMPLES = [
+  "block ssh from USER to DB on FW",
+  "send DB traffic on R1 via R3",
+  "R1(config)#\nip route 10.0.7.0 255.255.255.0 R3",
+  "USER must never reach DB",
+];
+
 function Drafter() {
-  const { network, changes, setChanges, setScenario } = useApp();
+  const { network, changes, setChanges, setScenario, analyze, analyzing } = useApp();
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [res, setRes] = useState<InterpretResponse | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  const run = async () => {
-    if (!network || !text.trim()) return;
-    setBusy(true); setErr(null); setRes(null);
+  const lastAdded = useRef<Change[] | null>(null); // what the last draft appended to the change set
+
+  const run = async (source: string, simulate: boolean) => {
+    if (!network || !source.trim()) return;
+    setBusy(true); setErr(null);
     try {
-      const r = await api.interpret(text, network);
+      const r = await api.interpret(source, network);
       setRes(r);
-      const drafted: Change[] = [...r.changes, ...r.policies.map((p) => ({ operation: "ADD_POLICY" as const, policy: p }))];
-      if (drafted.length) { setChanges([...changes, ...drafted]); setScenario(null); }
+      const drafted = draftedChanges(r);
+      const next = withDraft(changes, lastAdded.current, drafted);
+      lastAdded.current = drafted;
+      setChanges(next); setScenario(null);
+      // simulate only a complete draft: half a request is never analysed as if it were the whole
+      if (simulate && drafted.length > 0 && r.unparsed.length === 0) await analyze("Drafted from text", next);
     } catch (e) { setErr(errMsg(e)); } finally { setBusy(false); }
   };
+  const fix = (word: string, suggestion: string) => {
+    const corrected = replaceWord(text, word, suggestion);
+    setText(corrected);
+    run(corrected, false);
+  };
+
   return (
     <div>
-      <label className="label" htmlFor="nl">Draft from a sentence</label>
-      <div className="flex gap-2">
-        <input id="nl" className="field" value={text} placeholder="Change the route on R1 for 10.0.5.0/24 to R3"
-          onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && run()} />
-        <button className="btn" onClick={run} disabled={busy || !text.trim()}><Sparkles size={15} aria-hidden />Draft</button>
+      <label className="label" htmlFor="nl">Describe the change in words or config lines</label>
+      <textarea id="nl" className="field mono min-h-[76px] resize-y leading-5" rows={3} spellCheck={false} value={text}
+        placeholder={"block ssh from USER to DB on FW\nR1(config)# ip route 10.0.7.0 255.255.255.0 R3"}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); run(text, false); } }} />
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <button className="btn" onClick={() => run(text, false)} disabled={busy || !text.trim()}><Sparkles size={15} aria-hidden />Draft</button>
+        <button className="btn btn-primary" onClick={() => run(text, true)} disabled={busy || analyzing || !text.trim()}><Play size={15} aria-hidden />Draft and simulate</button>
+        {busy && <Spinner />}
       </div>
-      <p className="mt-1.5 text-xs text-faint">A rule-based parser, not a language model. It understands simple route, link and reachability phrasings, and drafted changes are added to the set below for you to review.</p>
+      <p className="mt-1.5 text-xs text-faint">
+        A rule-based parser, not a language model. It understands route changes in plain words or Cisco <code>ip route</code> lines (put <code>R1(config)#</code> above them), links, firewall rules (“block ssh from USER to DB on FW”), requirements (“USER must never reach DB”) and “delete policy P3”. Ctrl+Enter drafts. Every draft is checked against this network and added to the change set above for review; drafting again replaces the last draft.
+      </p>
+      <div className="mt-1.5 flex flex-wrap gap-1.5" aria-label="Examples">
+        {DRAFT_EXAMPLES.map((x) => <button key={x} type="button" className="rounded border border-line px-2 py-0.5 text-xs text-muted hover:border-net hover:text-net" onClick={() => setText(x)}>{x.split("\n").join(" / ")}</button>)}
+      </div>
       {err && <p role="alert" className="mt-1.5 text-sm text-bad">{err}</p>}
       {res && (
-        <div className="mt-2 space-y-1 text-sm">
-          {(res.changes.length > 0 || res.policies.length > 0) && <p className="text-safe">Added {res.changes.length} change{res.changes.length === 1 ? "" : "s"}{res.policies.length > 0 && ` and ${res.policies.length} polic${res.policies.length === 1 ? "y" : "ies"} (as ADD_POLICY)`}. Review before analysing.</p>}
-          {res.unparsed.map((u) => <p key={u.text} className="text-warn">Not understood: “{u.text}”{u.reason ? ` (${u.reason})` : ""}</p>)}
-        </div>
+        <ul className="mt-2 space-y-1 text-sm" aria-label="How each sentence was read">
+          {(res.matched ?? []).map((m, i) => (
+            <li key={`m${i}`} className="rounded border border-line bg-raised/40 px-2.5 py-1.5">
+              <span className="text-safe" aria-label="understood">✓ </span><span className="text-muted">“{m.text}”</span>
+              <span className="block pl-4 text-fg">{m.understood_as}</span>
+            </li>
+          ))}
+          {res.unparsed.map((u, i) => {
+            const f = typoFix(u);
+            return (
+              <li key={`u${i}`} className="rounded border border-warn/40 bg-warn/5 px-2.5 py-1.5">
+                <span className="text-warn" aria-label="not understood">✗ </span><span className="text-muted">“{u.text}”</span>
+                <span className="block pl-4 text-warn">{u.reason ?? "not understood"}</span>
+                {f && <button type="button" className="btn btn-ghost ml-4 mt-1 !py-0.5 !text-xs" onClick={() => fix(f.word, f.suggestion)}>Use {f.suggestion} instead of {f.word}</button>}
+              </li>
+            );
+          })}
+          {res.unparsed.length > 0 && (res.matched?.length ?? 0) > 0 && <li className="text-xs text-faint">Only the understood lines were added. Fix the others and draft again; “Draft and simulate” waits until everything is understood.</li>}
+        </ul>
       )}
     </div>
   );

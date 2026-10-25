@@ -14,7 +14,7 @@ export function describeChange(c: Change): string {
     case "ADD_LINK": return `Add link ${c.node_a} – ${c.node_b}`;
     case "DELETE_LINK": return `Delete link ${c.node_a} – ${c.node_b}`;
     case "ADD_ACL_RULE": return c.rule ? `Add ACL rule on ${c.rule.node}: ${describeRule(c.rule)}` : "Add ACL rule";
-    case "DELETE_ACL_RULE": return c.rule ? `Delete ACL rule on ${c.rule.node}: ${describeRule(c.rule)}` : `Delete ACL rule #${c.rule_index} on ${c.node}`;
+    case "DELETE_ACL_RULE": return c.rule ? `Delete ACL rule on ${c.rule.node}: ${describeRule(c.rule)}` : `Delete ACL rule ${(c.rule_index ?? 0) + 1} on ${c.node}`; // people count rules from 1
     case "ADD_POLICY": return c.policy ? `Add policy: ${describePolicy(c.policy)}` : "Add policy";
     case "DELETE_POLICY": return `Delete policy ${c.policy_id}`;
     default: return String((c as Change).operation);

@@ -23,7 +23,7 @@ interface Ctx {
   changes: Change[]; setChanges: (c: Change[]) => void; scenario: ExampleChange | null; setScenario: (s: ExampleChange | null) => void;
   weights: RiskWeights; setWeights: (w: RiskWeights) => void; probes: boolean; setProbes: (b: boolean) => void;
   report: ChangeReport | null; reportError: string | null; analyzing: boolean; stale: boolean; reportTitle: string;
-  analyze: (title?: string) => Promise<boolean>; openHistory: (id: string) => void; history: HistoryEntry[]; clearHistory: () => void;
+  analyze: (title?: string, changesOverride?: Change[]) => Promise<boolean>; openHistory: (id: string) => void; history: HistoryEntry[]; clearHistory: () => void;
   focus: Focus; setFocus: (f: Partial<Focus>) => void;
 }
 const AppCtx = createContext<Ctx | null>(null);
@@ -104,13 +104,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const setChanges = useCallback((c: Change[]) => setChangesRaw(c), []);
   const inputKey = useMemo(() => JSON.stringify([networkLabel, changes, weights, probes]), [networkLabel, changes, weights, probes]);
 
-  const analyze = useCallback(async (title?: string) => {
-    if (!network || changes.length === 0) return false;
+  /** Simulate the change set. `changesOverride` is for callers that have just set the changes
+   *  and cannot wait for the state update to re-render (the Drafter's "Draft and simulate"). */
+  const analyze = useCallback(async (title?: string, changesOverride?: Change[]) => {
+    const cs = changesOverride ?? changes;
+    if (!network || cs.length === 0) return false;
     setAnalyzing(true); setReportError(null);
     try {
-      const r = await api.simulate(network, changes, { weights, probes, probe_limit: 2000 });
+      const r = await api.simulate(network, cs, { weights, probes, probe_limit: 2000 });
       const t = title ?? scenario?.title ?? "Custom change";
-      setReport(r); setReportInput(inputKey); setReportTitle(t);
+      setReport(r); setReportInput(changesOverride ? JSON.stringify([networkLabel, cs, weights, probes]) : inputKey); setReportTitle(t);
       setFocusRaw({ findingId: r.findings[0]?.id ?? null, flowKey: null });
       setHistory((h) => {
         const next = [{ id: `${Date.now()}`, at: new Date().toISOString(), network: networkLabel, title: t, verdict: r.verdict.decision, report: r }, ...h].slice(0, config.historyMax);

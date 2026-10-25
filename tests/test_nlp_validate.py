@@ -60,3 +60,9 @@ def test_deleting_a_policy(net):
 def test_requirements_are_checked_too(net):
     r = interpret("APP must reach DB through FW on port 5432", net)
     assert r["policies"] and r["matched"][0]["kind"] == "policy" and not r["unparsed"]
+
+
+def test_a_deleted_rule_reads_back_with_the_number_that_was_typed(net):
+    """Rule numbers count from 1 when typed and when read back; only rule_index is 0-based."""
+    [m] = interpret("delete rule 2 on FW", net)["matched"]
+    assert m["understood_as"] == "Delete ACL rule 2 on FW"
