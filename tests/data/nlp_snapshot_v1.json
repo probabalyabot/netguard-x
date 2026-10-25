@@ -15,7 +15,7 @@
    "policies": [],
    "unparsed": [],
    "needs_review": true,
-   "note": "Review the structured result before analysing. This parser only understands simple route, link and reachability phrasings."
+   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links and reachability requirements."
   }
  },
  {
@@ -34,7 +34,7 @@
    "policies": [],
    "unparsed": [],
    "needs_review": true,
-   "note": "Review the structured result before analysing. This parser only understands simple route, link and reachability phrasings."
+   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links and reachability requirements."
   }
  },
  {
@@ -53,7 +53,7 @@
    "policies": [],
    "unparsed": [],
    "needs_review": true,
-   "note": "Review the structured result before analysing. This parser only understands simple route, link and reachability phrasings."
+   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links and reachability requirements."
   }
  },
  {
@@ -72,7 +72,7 @@
    "policies": [],
    "unparsed": [],
    "needs_review": true,
-   "note": "Review the structured result before analysing. This parser only understands simple route, link and reachability phrasings."
+   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links and reachability requirements."
   }
  },
  {
@@ -90,7 +90,7 @@
    "policies": [],
    "unparsed": [],
    "needs_review": true,
-   "note": "Review the structured result before analysing. This parser only understands simple route, link and reachability phrasings."
+   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links and reachability requirements."
   }
  },
  {
@@ -109,7 +109,7 @@
    "policies": [],
    "unparsed": [],
    "needs_review": true,
-   "note": "Review the structured result before analysing. This parser only understands simple route, link and reachability phrasings."
+   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links and reachability requirements."
   }
  },
  {
@@ -122,13 +122,13 @@
      "operation": "CHANGE_METRIC",
      "router": "R1",
      "destination": "0.0.0.0/0",
-     "new_metric": 1
+     "new_metric": 50
     }
    ],
    "policies": [],
    "unparsed": [],
    "needs_review": true,
-   "note": "Review the structured result before analysing. This parser only understands simple route, link and reachability phrasings."
+   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links and reachability requirements."
   }
  },
  {
@@ -147,7 +147,7 @@
    "policies": [],
    "unparsed": [],
    "needs_review": true,
-   "note": "Review the structured result before analysing. This parser only understands simple route, link and reachability phrasings."
+   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links and reachability requirements."
   }
  },
  {
@@ -165,7 +165,7 @@
    "policies": [],
    "unparsed": [],
    "needs_review": true,
-   "note": "Review the structured result before analysing. This parser only understands simple route, link and reachability phrasings."
+   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links and reachability requirements."
   }
  },
  {
@@ -183,7 +183,7 @@
    "policies": [],
    "unparsed": [],
    "needs_review": true,
-   "note": "Review the structured result before analysing. This parser only understands simple route, link and reachability phrasings."
+   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links and reachability requirements."
   }
  },
  {
@@ -201,7 +201,7 @@
    "policies": [],
    "unparsed": [],
    "needs_review": true,
-   "note": "Review the structured result before analysing. This parser only understands simple route, link and reachability phrasings."
+   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links and reachability requirements."
   }
  },
  {
@@ -219,7 +219,7 @@
    "policies": [],
    "unparsed": [],
    "needs_review": true,
-   "note": "Review the structured result before analysing. This parser only understands simple route, link and reachability phrasings."
+   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links and reachability requirements."
   }
  },
  {
@@ -246,7 +246,7 @@
    ],
    "unparsed": [],
    "needs_review": true,
-   "note": "Review the structured result before analysing. This parser only understands simple route, link and reachability phrasings."
+   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links and reachability requirements."
   }
  },
  {
@@ -266,7 +266,7 @@
    ],
    "unparsed": [],
    "needs_review": true,
-   "note": "Review the structured result before analysing. This parser only understands simple route, link and reachability phrasings."
+   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links and reachability requirements."
   }
  },
  {
@@ -285,7 +285,7 @@
    ],
    "unparsed": [],
    "needs_review": true,
-   "note": "Review the structured result before analysing. This parser only understands simple route, link and reachability phrasings."
+   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links and reachability requirements."
   }
  },
  {
@@ -302,7 +302,7 @@
     }
    ],
    "needs_review": true,
-   "note": "Review the structured result before analysing. This parser only understands simple route, link and reachability phrasings."
+   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links and reachability requirements."
   }
  },
  {
@@ -315,11 +315,11 @@
    "unparsed": [
     {
      "text": "route traffic somewhere",
-     "reason": "a route change needs a device ('on R1') and a prefix ('10.0.5.0/24')"
+     "reason": "a route change needs a device ('on R1')"
     }
    ],
    "needs_review": true,
-   "note": "Review the structured result before analysing. This parser only understands simple route, link and reachability phrasings."
+   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links and reachability requirements."
   }
  },
  {
@@ -332,11 +332,11 @@
    "unparsed": [
     {
      "text": "Change the route on R1 to R3",
-     "reason": "a route change needs a device ('on R1') and a prefix ('10.0.5.0/24')"
+     "reason": "a route change needs a destination: a prefix ('10.0.5.0/24'), 'the default route', or a device ('DB traffic')"
     }
    ],
    "needs_review": true,
-   "note": "Review the structured result before analysing. This parser only understands simple route, link and reachability phrasings."
+   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links and reachability requirements."
   }
  },
  {
@@ -353,7 +353,7 @@
     }
    ],
    "needs_review": true,
-   "note": "Review the structured result before analysing. This parser only understands simple route, link and reachability phrasings."
+   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links and reachability requirements."
   }
  },
  {
@@ -370,7 +370,7 @@
     }
    ],
    "needs_review": true,
-   "note": "Review the structured result before analysing. This parser only understands simple route, link and reachability phrasings."
+   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links and reachability requirements."
   }
  },
  {
@@ -394,7 +394,7 @@
    "policies": [],
    "unparsed": [],
    "needs_review": true,
-   "note": "Review the structured result before analysing. This parser only understands simple route, link and reachability phrasings."
+   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links and reachability requirements."
   }
  },
  {
@@ -418,7 +418,7 @@
    "policies": [],
    "unparsed": [],
    "needs_review": true,
-   "note": "Review the structured result before analysing. This parser only understands simple route, link and reachability phrasings."
+   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links and reachability requirements."
   }
  },
  {
@@ -444,24 +444,26 @@
    ],
    "unparsed": [],
    "needs_review": true,
-   "note": "Review the structured result before analysing. This parser only understands simple route, link and reachability phrasings."
+   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links and reachability requirements."
   }
  },
  {
   "text": "point R2 at R1 for 10.0.5.0/24",
   "result": {
    "parser": "rule-based",
-   "kind": "unknown",
-   "changes": [],
-   "policies": [],
-   "unparsed": [
+   "kind": "changes",
+   "changes": [
     {
-     "text": "point R2 at R1 for 10.0.5.0/24",
-     "reason": "not a reachability requirement"
+     "operation": "MODIFY_ROUTE",
+     "router": "R2",
+     "destination": "10.0.5.0/24",
+     "new_next_hop": "R1"
     }
    ],
+   "policies": [],
+   "unparsed": [],
    "needs_review": true,
-   "note": "Review the structured result before analysing. This parser only understands simple route, link and reachability phrasings."
+   "note": "Review the structured result before analysing. This parser understands route changes (plain English or Cisco ip route lines), links and reachability requirements."
   }
  }
 ]

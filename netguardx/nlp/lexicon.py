@@ -82,18 +82,24 @@ def mask_length(mask: str) -> int:
         raise LexError(f"{mask} is not a valid netmask") from exc
 
 
-def prefix_in(text: str) -> Optional[str]:
-    """The first destination prefix written in ``text``: CIDR, address + netmask, or a bare address
-    (a /32).  Host bits are cleared: 10.0.5.7/24 -> 10.0.5.0/24."""
+def prefix_span(text: str) -> Optional[tuple[str, int, int]]:
+    """Like ``prefix_in``, plus where the prefix starts and ends in ``text``."""
     m = re.search(rf"({IP})(?:\s*/\s*(\d{{1,2}})|\s+(255(?:\.\d{{1,3}}){{3}}|0\.0\.0\.0))?(?![\d.])", text)
     if not m:
         return None
     addr, length, mask = m.groups()
     bits = int(length) if length is not None else mask_length(mask) if mask else 32
     try:
-        return str(ipaddress.ip_network(f"{addr}/{bits}", strict=False))
+        return str(ipaddress.ip_network(f"{addr}/{bits}", strict=False)), m.start(), m.end()
     except ValueError as exc:
         raise LexError(f"{addr}/{bits} is not a valid prefix") from exc
+
+
+def prefix_in(text: str) -> Optional[str]:
+    """The first destination prefix written in ``text``: CIDR, address + netmask, or a bare address
+    (a /32).  Host bits are cleared: 10.0.5.7/24 -> 10.0.5.0/24."""
+    span = prefix_span(text)
+    return span[0] if span else None
 
 
 def service_in(text: str) -> Optional[tuple[str, Optional[int]]]:
@@ -143,8 +149,8 @@ def rule_number_in(text: str) -> Optional[int]:
 
 def number_after(text: str, words: str) -> Optional[int]:
     """The first standalone number after one of ``words`` (regex alternation), skipping digits that
-    are part of names or addresses: "metric of R1's route to 50" -> 50."""
-    low = text.lower()
+    are part of names, addresses or prefixes: "metric of R1's route for 10.0.5.0/24 to 50" -> 50."""
+    low = re.sub(rf"{IP}(?:\s*/\s*\d{{1,2}})?", " ", text.lower())
     key = re.search(rf"\b(?:{words})\b", low)
     if not key:
         return None
@@ -183,6 +189,17 @@ class Lexicon:
             if nid not in out:
                 out.append(nid)
         return out
+
+    def after(self, text: str, words: str, last: bool = False) -> Optional[str]:
+        """The device named, by name or address, right after one of ``words`` (a regex alternation);
+        the first such mention, or the last with ``last``.  An address that is part of a prefix
+        (followed by /len or a mask) is not a device."""
+        names = "|".join(sorted((re.escape(k) for k in self.names), key=len, reverse=True))
+        pattern = rf"\b(?:{words})\s+({names}|{IP})(?![\w.-])(?!\s*/)(?!\s+255\.)"
+        hits = [d for h in re.findall(pattern, text, re.I) if (d := self.device(h))]
+        if not hits:
+            return None
+        return hits[-1] if last else hits[0]
 
     def unknown_names(self, text: str) -> list[tuple[str, Optional[str]]]:
         """Words shaped like device names (R22, FWW, USR) that name no device, each with the closest
