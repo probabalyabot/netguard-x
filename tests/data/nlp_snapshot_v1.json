@@ -1,0 +1,467 @@
+[
+ {
+  "text": "Change the route on R1 for 10.0.5.0/24 to R3.",
+  "result": {
+   "parser": "rule-based",
+   "kind": "changes",
+   "changes": [
+    {
+     "operation": "MODIFY_ROUTE",
+     "router": "R1",
+     "destination": "10.0.5.0/24",
+     "new_next_hop": "R3"
+    }
+   ],
+   "policies": [],
+   "unparsed": [],
+   "needs_review": true,
+   "note": "Review the structured result before analysing. This parser only understands simple route, link and reachability phrasings."
+  }
+ },
+ {
+  "text": "Change the route on R1 for 10.0.5.0/24 to use R3",
+  "result": {
+   "parser": "rule-based",
+   "kind": "changes",
+   "changes": [
+    {
+     "operation": "MODIFY_ROUTE",
+     "router": "R1",
+     "destination": "10.0.5.0/24",
+     "new_next_hop": "R3"
+    }
+   ],
+   "policies": [],
+   "unparsed": [],
+   "needs_review": true,
+   "note": "Review the structured result before analysing. This parser only understands simple route, link and reachability phrasings."
+  }
+ },
+ {
+  "text": "Send traffic for 10.0.5.0/24 on R1 via R3",
+  "result": {
+   "parser": "rule-based",
+   "kind": "changes",
+   "changes": [
+    {
+     "operation": "MODIFY_ROUTE",
+     "router": "R1",
+     "destination": "10.0.5.0/24",
+     "new_next_hop": "R3"
+    }
+   ],
+   "policies": [],
+   "unparsed": [],
+   "needs_review": true,
+   "note": "Review the structured result before analysing. This parser only understands simple route, link and reachability phrasings."
+  }
+ },
+ {
+  "text": "Add a route on R1 for 10.0.9.0/24 via R2",
+  "result": {
+   "parser": "rule-based",
+   "kind": "changes",
+   "changes": [
+    {
+     "operation": "ADD_ROUTE",
+     "router": "R1",
+     "destination": "10.0.9.0/24",
+     "next_hop": "R2"
+    }
+   ],
+   "policies": [],
+   "unparsed": [],
+   "needs_review": true,
+   "note": "Review the structured result before analysing. This parser only understands simple route, link and reachability phrasings."
+  }
+ },
+ {
+  "text": "Delete the route on R1 for 10.0.5.0/24",
+  "result": {
+   "parser": "rule-based",
+   "kind": "changes",
+   "changes": [
+    {
+     "operation": "DELETE_ROUTE",
+     "router": "R1",
+     "destination": "10.0.5.0/24"
+    }
+   ],
+   "policies": [],
+   "unparsed": [],
+   "needs_review": true,
+   "note": "Review the structured result before analysing. This parser only understands simple route, link and reachability phrasings."
+  }
+ },
+ {
+  "text": "Remove the route on R1 for 10.0.5.0/24 via R2",
+  "result": {
+   "parser": "rule-based",
+   "kind": "changes",
+   "changes": [
+    {
+     "operation": "DELETE_ROUTE",
+     "router": "R1",
+     "destination": "10.0.5.0/24",
+     "next_hop": "R2"
+    }
+   ],
+   "policies": [],
+   "unparsed": [],
+   "needs_review": true,
+   "note": "Review the structured result before analysing. This parser only understands simple route, link and reachability phrasings."
+  }
+ },
+ {
+  "text": "Set the metric on R1 for 0.0.0.0/0 to 50",
+  "result": {
+   "parser": "rule-based",
+   "kind": "changes",
+   "changes": [
+    {
+     "operation": "CHANGE_METRIC",
+     "router": "R1",
+     "destination": "0.0.0.0/0",
+     "new_metric": 1
+    }
+   ],
+   "policies": [],
+   "unparsed": [],
+   "needs_review": true,
+   "note": "Review the structured result before analysing. This parser only understands simple route, link and reachability phrasings."
+  }
+ },
+ {
+  "text": "Change the metric of the route on R2 for 10.0.5.0/24 to 7",
+  "result": {
+   "parser": "rule-based",
+   "kind": "changes",
+   "changes": [
+    {
+     "operation": "CHANGE_METRIC",
+     "router": "R2",
+     "destination": "10.0.5.0/24",
+     "new_metric": 7
+    }
+   ],
+   "policies": [],
+   "unparsed": [],
+   "needs_review": true,
+   "note": "Review the structured result before analysing. This parser only understands simple route, link and reachability phrasings."
+  }
+ },
+ {
+  "text": "remove the link between R2 and FW",
+  "result": {
+   "parser": "rule-based",
+   "kind": "changes",
+   "changes": [
+    {
+     "operation": "DELETE_LINK",
+     "node_a": "R2",
+     "node_b": "FW"
+    }
+   ],
+   "policies": [],
+   "unparsed": [],
+   "needs_review": true,
+   "note": "Review the structured result before analysing. This parser only understands simple route, link and reachability phrasings."
+  }
+ },
+ {
+  "text": "add a link between FW and BACKUP",
+  "result": {
+   "parser": "rule-based",
+   "kind": "changes",
+   "changes": [
+    {
+     "operation": "ADD_LINK",
+     "node_a": "FW",
+     "node_b": "BACKUP"
+    }
+   ],
+   "policies": [],
+   "unparsed": [],
+   "needs_review": true,
+   "note": "Review the structured result before analysing. This parser only understands simple route, link and reachability phrasings."
+  }
+ },
+ {
+  "text": "cable R2 to R3",
+  "result": {
+   "parser": "rule-based",
+   "kind": "changes",
+   "changes": [
+    {
+     "operation": "ADD_LINK",
+     "node_a": "R2",
+     "node_b": "R3"
+    }
+   ],
+   "policies": [],
+   "unparsed": [],
+   "needs_review": true,
+   "note": "Review the structured result before analysing. This parser only understands simple route, link and reachability phrasings."
+  }
+ },
+ {
+  "text": "unplug the connection from R1 to R2",
+  "result": {
+   "parser": "rule-based",
+   "kind": "changes",
+   "changes": [
+    {
+     "operation": "DELETE_LINK",
+     "node_a": "R1",
+     "node_b": "R2"
+    }
+   ],
+   "policies": [],
+   "unparsed": [],
+   "needs_review": true,
+   "note": "Review the structured result before analysing. This parser only understands simple route, link and reachability phrasings."
+  }
+ },
+ {
+  "text": "APP can reach DB through FW on port 5432, but DB must never access the internet",
+  "result": {
+   "parser": "rule-based",
+   "kind": "requirements",
+   "changes": [],
+   "policies": [
+    {
+     "action": "ALLOW",
+     "source": "APP",
+     "destination": "DB",
+     "protocol": "TCP",
+     "port": 5432,
+     "waypoint": "FW"
+    },
+    {
+     "action": "DENY",
+     "source": "DB",
+     "destination": "INET",
+     "protocol": "TCP"
+    }
+   ],
+   "unparsed": [],
+   "needs_review": true,
+   "note": "Review the structured result before analysing. This parser only understands simple route, link and reachability phrasings."
+  }
+ },
+ {
+  "text": "USER must not reach DB on tcp 5432",
+  "result": {
+   "parser": "rule-based",
+   "kind": "requirements",
+   "changes": [],
+   "policies": [
+    {
+     "action": "DENY",
+     "source": "USER",
+     "destination": "DB",
+     "protocol": "TCP",
+     "port": 5432
+    }
+   ],
+   "unparsed": [],
+   "needs_review": true,
+   "note": "Review the structured result before analysing. This parser only understands simple route, link and reachability phrasings."
+  }
+ },
+ {
+  "text": "the internet cannot reach DB",
+  "result": {
+   "parser": "rule-based",
+   "kind": "requirements",
+   "changes": [],
+   "policies": [
+    {
+     "action": "DENY",
+     "source": "INET",
+     "destination": "DB",
+     "protocol": "TCP"
+    }
+   ],
+   "unparsed": [],
+   "needs_review": true,
+   "note": "Review the structured result before analysing. This parser only understands simple route, link and reachability phrasings."
+  }
+ },
+ {
+  "text": "make it faster",
+  "result": {
+   "parser": "rule-based",
+   "kind": "unknown",
+   "changes": [],
+   "policies": [],
+   "unparsed": [
+    {
+     "text": "make it faster",
+     "reason": "not a reachability requirement"
+    }
+   ],
+   "needs_review": true,
+   "note": "Review the structured result before analysing. This parser only understands simple route, link and reachability phrasings."
+  }
+ },
+ {
+  "text": "route traffic somewhere",
+  "result": {
+   "parser": "rule-based",
+   "kind": "unknown",
+   "changes": [],
+   "policies": [],
+   "unparsed": [
+    {
+     "text": "route traffic somewhere",
+     "reason": "a route change needs a device ('on R1') and a prefix ('10.0.5.0/24')"
+    }
+   ],
+   "needs_review": true,
+   "note": "Review the structured result before analysing. This parser only understands simple route, link and reachability phrasings."
+  }
+ },
+ {
+  "text": "Change the route on R1 to R3",
+  "result": {
+   "parser": "rule-based",
+   "kind": "unknown",
+   "changes": [],
+   "policies": [],
+   "unparsed": [
+    {
+     "text": "Change the route on R1 to R3",
+     "reason": "a route change needs a device ('on R1') and a prefix ('10.0.5.0/24')"
+    }
+   ],
+   "needs_review": true,
+   "note": "Review the structured result before analysing. This parser only understands simple route, link and reachability phrasings."
+  }
+ },
+ {
+  "text": "add a link to R1",
+  "result": {
+   "parser": "rule-based",
+   "kind": "unknown",
+   "changes": [],
+   "policies": [],
+   "unparsed": [
+    {
+     "text": "add a link to R1",
+     "reason": "could not find two devices for the link"
+    }
+   ],
+   "needs_review": true,
+   "note": "Review the structured result before analysing. This parser only understands simple route, link and reachability phrasings."
+  }
+ },
+ {
+  "text": "move the link between R1 and R2",
+  "result": {
+   "parser": "rule-based",
+   "kind": "unknown",
+   "changes": [],
+   "policies": [],
+   "unparsed": [
+    {
+     "text": "move the link between R1 and R2",
+     "reason": "did not recognise the link operation"
+    }
+   ],
+   "needs_review": true,
+   "note": "Review the structured result before analysing. This parser only understands simple route, link and reachability phrasings."
+  }
+ },
+ {
+  "text": "Change the route on R1 for 10.0.5.0/24 to R3; remove the link between R2 and FW",
+  "result": {
+   "parser": "rule-based",
+   "kind": "changes",
+   "changes": [
+    {
+     "operation": "MODIFY_ROUTE",
+     "router": "R1",
+     "destination": "10.0.5.0/24",
+     "new_next_hop": "R3"
+    },
+    {
+     "operation": "DELETE_LINK",
+     "node_a": "R2",
+     "node_b": "FW"
+    }
+   ],
+   "policies": [],
+   "unparsed": [],
+   "needs_review": true,
+   "note": "Review the structured result before analysing. This parser only understands simple route, link and reachability phrasings."
+  }
+ },
+ {
+  "text": "add a route on R1 for 10.0.9.0/24 via R2\ndelete the route on R2 for 10.0.5.0/24",
+  "result": {
+   "parser": "rule-based",
+   "kind": "changes",
+   "changes": [
+    {
+     "operation": "ADD_ROUTE",
+     "router": "R1",
+     "destination": "10.0.9.0/24",
+     "next_hop": "R2"
+    },
+    {
+     "operation": "DELETE_ROUTE",
+     "router": "R2",
+     "destination": "10.0.5.0/24"
+    }
+   ],
+   "policies": [],
+   "unparsed": [],
+   "needs_review": true,
+   "note": "Review the structured result before analysing. This parser only understands simple route, link and reachability phrasings."
+  }
+ },
+ {
+  "text": "APP should talk to DB via FW. USER must never reach DB.",
+  "result": {
+   "parser": "rule-based",
+   "kind": "requirements",
+   "changes": [],
+   "policies": [
+    {
+     "action": "ALLOW",
+     "source": "APP",
+     "destination": "DB",
+     "protocol": "TCP",
+     "waypoint": "FW"
+    },
+    {
+     "action": "DENY",
+     "source": "USER",
+     "destination": "DB",
+     "protocol": "TCP"
+    }
+   ],
+   "unparsed": [],
+   "needs_review": true,
+   "note": "Review the structured result before analysing. This parser only understands simple route, link and reachability phrasings."
+  }
+ },
+ {
+  "text": "point R2 at R1 for 10.0.5.0/24",
+  "result": {
+   "parser": "rule-based",
+   "kind": "unknown",
+   "changes": [],
+   "policies": [],
+   "unparsed": [
+    {
+     "text": "point R2 at R1 for 10.0.5.0/24",
+     "reason": "not a reachability requirement"
+    }
+   ],
+   "needs_review": true,
+   "note": "Review the structured result before analysing. This parser only understands simple route, link and reachability phrasings."
+  }
+ }
+]
