@@ -84,7 +84,7 @@ function Drafter() {
         {busy && <Spinner />}
       </div>
       <p className="mt-1.5 text-xs text-faint">
-        A rule-based parser, not a language model. It understands route changes in plain words or Cisco <code>ip route</code> lines (put <code>R1(config)#</code> above them), links, firewall rules (“block ssh from USER to DB on FW”), requirements (“USER must never reach DB”) and “delete policy P3”. Ctrl+Enter drafts. Every draft is checked against this network and added to the change set above for review; drafting again replaces the last draft.
+        Understands route changes in plain words or Cisco <code>ip route</code> lines (put <code>R1(config)#</code> above them), links, firewall rules (“block ssh from USER to DB on FW”), requirements (“USER must never reach DB”) and “delete policy P3”. Ctrl+Enter drafts. Every draft is checked against this network and added to the change set above for review; drafting again replaces the last draft.
       </p>
       <div className="mt-1.5 flex flex-wrap gap-1.5" aria-label="Examples">
         {examplesHere.map((x) => <button key={x} type="button" className="rounded border border-line px-2 py-0.5 text-xs text-muted hover:border-net hover:text-net" onClick={() => setText(x)}>{x.split("\n").join(" / ")}</button>)}

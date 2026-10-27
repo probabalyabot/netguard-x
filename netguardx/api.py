@@ -15,7 +15,7 @@ from .changes import ChangeError
 from .eval.jobs import Busy, JobStore
 from .impact import AnalysisOptions, _topology, analyze, layout_topology
 from .models import Change, Network
-from .nlp import interpret
+from .nlp import gemini, interpret
 from .report import render_markdown
 from .risk import RiskWeights
 from .verify import verify_network
@@ -140,6 +140,8 @@ def diff(req: SimulateRequest):
 
 @app.post("/api/interpret")
 def interpret_text(req: InterpretRequest):
+    if gemini.enabled():
+        return gemini.interpret(req.text, req.network)
     return interpret(req.text, req.network)
 
 

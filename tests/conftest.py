@@ -1,9 +1,13 @@
 import json
+import os
 from pathlib import Path
 
 import pytest
 
 from netguardx import Network
+
+# Tests never call Gemini, even when a key is in .env.
+os.environ["NETGUARDX_GEMINI"] = "0"
 
 EX = Path(__file__).parent.parent / "netguardx" / "examples"
 
