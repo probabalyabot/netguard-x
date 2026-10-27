@@ -72,6 +72,12 @@ _STOP = {"TCP", "UDP", "ICMP", "ACL", "ACLS", "IP", "IPV4", "IPV6", "CIDR", "NAT
 _STOP |= {s.upper() for s in SERVICES}
 _NAME_SHAPED = re.compile(r"(?<![\w.-])([A-Za-z][A-Za-z_]*\d+[\w-]*|[A-Z]{2,}[\w-]*)(?![\w.-])")
 _ROLE_TYPES = {"firewall": "firewall", "internet": "internet"}  # role word -> device type
+# words for a kind of device, used only to list the candidates when a word names no device
+_KIND_WORDS = {"firewall": "firewall", "fw": "firewall", "router": "router", "server": "server",
+               "host": "host", "internet": "internet"}
+# words that follow "on" / "at" without naming a device: "on port 22", "at the top", "at position 2"
+_NOT_DEVICES = {"port", "ports", "top", "end", "bottom", "start", "position", "first", "last",
+                "tcp", "udp", "icmp", "rule", "metric", "cost"}
 
 
 def mask_length(mask: str) -> int:
@@ -222,8 +228,35 @@ class Lexicon:
     def unknown_reason(self, text: str) -> Optional[str]:
         """"unknown device R22 (did you mean R2?)" for the first name-shaped word that names no device.
         When a clause fails and contains one, that is the likelier problem than the grammar."""
-        for word, suggestion in self.unknown_names(text):
-            return f"unknown device {word}" + (f" (did you mean {suggestion}?)" if suggestion else "")
+        for word, _ in self.unknown_names(text):
+            return self.unknown_word(word)
+        return None
+
+    def unknown_word(self, word: str) -> str:
+        """Why ``word`` names no device, with what it might mean: one close match is offered as
+        "did you mean X?" (the Drafter turns that into a fix); a kind of device that this network
+        has several of ("fw", "firewall") lists them, since picking one would be a guess."""
+        low = word.lower()
+        kind = _KIND_WORDS.get(low.rstrip("s"))
+        close = [] if kind else difflib.get_close_matches(low, list(self.names), n=1, cutoff=0.6)
+        if close:
+            return f"unknown device {word} (did you mean {self.names[close[0]]}?)"
+        candidates = sorted({n.id for n in self.net.nodes
+                             if n.type == kind or low in n.id.lower().split("-")})
+        if len(candidates) == 1:
+            return f"unknown device {word} (did you mean {candidates[0]}?)"
+        if 1 < len(candidates) <= 6:
+            return f"unknown device {word}: this network has {', '.join(candidates[:-1])} and {candidates[-1]}"
+        return f"unknown device {word}"
+
+    def unknown_target(self, text: str, words: str = "on|at") -> Optional[str]:
+        """The reason the word after "on" / "at" names no device ("block ssh ... on fw" on a network
+        without FW), or None when there is no such word or it is a device."""
+        for m in re.finditer(rf"\b(?:{words})\s+(?:the\s+)?([A-Za-z][\w.-]*)", text, re.I):
+            word = m.group(1).rstrip(".")
+            if word.lower() in _NOT_DEVICES or self.device(word) or self.device(f"the {word}"):
+                continue
+            return self.unknown_word(word)
         return None
 
     def route_covering(self, router: str, device: str) -> Optional[str]:

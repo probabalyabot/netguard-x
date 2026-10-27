@@ -77,7 +77,7 @@ that names an unknown device never falls back to a config header's device. In th
 same parser drives the Drafter on the Change analysis screen.
 
 **Parse rate.** The parser drafts exactly the expected changes for 80 of 80 entries in
-`tests/nlp_corpus.json` (`python -m netguardx.nlp.score tests/nlp_corpus.json`) and 26 of 26 in
+`tests/nlp_corpus.json` (`python -m netguardx.nlp.score tests/nlp_corpus.json`) and 30 of 30 in
 `tests/nlp_corpus_enterprise.json` on the 60-device network (add
 `--network netguardx/examples/enterprise.json`). Both were written alongside the grammar, so they
 measure coverage, not accuracy. An accuracy figure needs a

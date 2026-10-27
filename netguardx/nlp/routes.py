@@ -78,7 +78,7 @@ def _english(t: str, clause: Clause, lex: Lexicon) -> Result:
         old_next_hop, next_hop = lex.device(moved.group(1)), lex.device(moved.group(2))
     router = router or lex.after(t, "on|at|in") or _possessive(t, lex) or lex.inherited(clause.device, t)
     if router is None:
-        return None, "a route change needs a device ('on R1')"
+        return None, lex.unknown_target(t) or "a route change needs a device ('on R1')"
 
     span = prefix_span(_DEVICE_ADDRESSES.sub(" ", t))  # "on 10.255.0.1" names the router, not a destination
     prefix = span[0] if span else ("0.0.0.0/0" if re.search(r"\bdefault route\b", low) else None)

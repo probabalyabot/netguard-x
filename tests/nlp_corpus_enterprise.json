@@ -24,5 +24,9 @@
  {"text": "change DC-R's route for 10.20.5.0/24 from DB-FW to SAN-RR", "unparsed": true, "reason_contains": "did you mean SAN-R?"},
  {"text": "block ssh from GUEST1 to JUMP on DCFW", "unparsed": true, "reason_contains": "did you mean DC-FW?"},
  {"text": "delete rule 9 on GUEST-R", "unparsed": true, "reason_contains": "only 2 rules"},
- {"text": "allow ssh from GUEST1 to the server room on DC-FW", "unparsed": true, "reason_contains": "'to the server room'"}
+ {"text": "allow ssh from GUEST1 to the server room on DC-FW", "unparsed": true, "reason_contains": "'to the server room'"},
+ {"text": "block ssh from user to db on fw", "unparsed": true, "reason_contains": "unknown device fw: this network has DB-FW, DC-FW and FW-EDGE", "note": "three-tier names on the enterprise network: name the word, list the firewalls"},
+ {"text": "block ssh from GUEST1 to JUMP on firewall", "unparsed": true, "reason_contains": "this network has DB-FW, DC-FW and FW-EDGE"},
+ {"text": "block ssh from GUEST1 to JUMP on dc-fw", "note": "lowercase device name", "changes": [{"operation": "ADD_ACL_RULE", "rule": {"node": "DC-FW", "source": "GUEST1", "destination": "JUMP", "protocol": "TCP", "port": 22, "action": "DENY"}}]},
+ {"text": "remove the default route on dcr", "unparsed": true, "reason_contains": "unknown device dcr (did you mean DC-R?)"}
 ]

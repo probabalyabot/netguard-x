@@ -84,7 +84,7 @@ def _endpoint(t: str, word: str, lex: Lexicon) -> Optional[str]:
 def _add(t: str, clause: Clause, lex: Lexicon) -> Result:
     node = _device(t, clause, lex)
     if node is None:
-        return None, _NEEDS_DEVICE
+        return None, lex.unknown_target(t) or _NEEDS_DEVICE
     action = _ACTIONS[_ACTION.search(t).group(1).lower()]
     source = _endpoint(t, "from", lex)
     destination = _endpoint(t, "to", lex) or "any"
@@ -111,7 +111,7 @@ def _add(t: str, clause: Clause, lex: Lexicon) -> Result:
 def _delete(t: str, clause: Clause, lex: Lexicon) -> Result:
     node = lex.after(t, "on|at|from") or lex.inherited(clause.device, t)
     if node is None:
-        return None, "say which device the rule is on ('delete rule 2 on FW')"
+        return None, lex.unknown_target(t) or "say which device the rule is on ('delete rule 2 on FW')"
     rules = [a for a in lex.net.acls if a.node == node]
     if not rules:
         return None, f"{node} has no ACL rules"
