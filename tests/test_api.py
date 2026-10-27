@@ -17,6 +17,7 @@ def test_health_and_index():
 def test_examples():
     d = client.get("/api/examples").json()
     assert d["networks"][0]["id"] == "basic" and len(d["changes"]) >= 5
+    assert "enterprise" in {n["id"] for n in d["networks"]}
 
 
 def test_verify():
