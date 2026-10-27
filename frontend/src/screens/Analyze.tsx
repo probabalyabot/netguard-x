@@ -8,7 +8,7 @@ import { Empty, Notice, PageHeader, Segmented, Spinner } from "../components/ui"
 import { describeChange } from "../lib/describe";
 import { draftedChanges, replaceWord, typoFix, withDraft } from "../lib/drafts";
 import { errMsg } from "../lib/format";
-import { exampleNetworkId, scenariosFor } from "../lib/scenarios";
+import { draftExamples, exampleNetworkId, scenariosFor } from "../lib/scenarios";
 import { validateChanges } from "../lib/validate";
 import { DEFAULT_WEIGHTS, useApp } from "../state/AppState";
 
@@ -42,15 +42,9 @@ function JsonEditor() {
   );
 }
 
-const DRAFT_EXAMPLES = [
-  "block ssh from USER to DB on FW",
-  "send DB traffic on R1 via R3",
-  "R1(config)#\nip route 10.0.7.0 255.255.255.0 R3",
-  "USER must never reach DB",
-];
-
 function Drafter() {
-  const { network, changes, setChanges, setScenario, analyze, analyzing } = useApp();
+  const { network, changes, setChanges, setScenario, analyze, analyzing, examples, networkLabel } = useApp();
+  const examplesHere = draftExamples(exampleNetworkId(examples, networkLabel));
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [res, setRes] = useState<InterpretResponse | null>(null);
@@ -93,7 +87,7 @@ function Drafter() {
         A rule-based parser, not a language model. It understands route changes in plain words or Cisco <code>ip route</code> lines (put <code>R1(config)#</code> above them), links, firewall rules (“block ssh from USER to DB on FW”), requirements (“USER must never reach DB”) and “delete policy P3”. Ctrl+Enter drafts. Every draft is checked against this network and added to the change set above for review; drafting again replaces the last draft.
       </p>
       <div className="mt-1.5 flex flex-wrap gap-1.5" aria-label="Examples">
-        {DRAFT_EXAMPLES.map((x) => <button key={x} type="button" className="rounded border border-line px-2 py-0.5 text-xs text-muted hover:border-net hover:text-net" onClick={() => setText(x)}>{x.split("\n").join(" / ")}</button>)}
+        {examplesHere.map((x) => <button key={x} type="button" className="rounded border border-line px-2 py-0.5 text-xs text-muted hover:border-net hover:text-net" onClick={() => setText(x)}>{x.split("\n").join(" / ")}</button>)}
       </div>
       {err && <p role="alert" className="mt-1.5 text-sm text-bad">{err}</p>}
       {res && (

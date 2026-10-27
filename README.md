@@ -35,7 +35,7 @@ Run everything from this folder (the one that contains `netguardx/`). For the we
     python -m netguardx session netguardx/examples/enterprise.json test-scripts/enterprise-session.txt
     python -m netguardx eval --devices 50 63 75 --commands 100 --seeds 1 2 3 --out eval-results/run1
     python -m pytest -q tests            # 474 tests
-    cd frontend && npm test              # 25 tests
+    cd frontend && npm test              # 26 tests
 
 `analyze` exits with code 1 when the verdict is NOT_RECOMMENDED, so it can gate a CI pipeline.
 Flags: `--json`, `--out FILE`, `--no-probes`, `--weights '{"broken_flows": 25}'`.

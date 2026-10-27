@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ExamplesResponse } from "../api/types";
-import { exampleNetworkId, scenariosFor } from "./scenarios";
+import { draftExamples, exampleNetworkId, scenariosFor } from "./scenarios";
 
 const net = { name: "n", nodes: [] } as unknown as ExamplesResponse["networks"][number]["network"];
 const ex: ExamplesResponse = {
@@ -22,5 +22,14 @@ describe("scenarios", () => {
     expect(scenariosFor(ex, "enterprise").map((s) => s.id)).toEqual(["enterprise/b", "enterprise/c"]);
     expect(scenariosFor(ex, "basic").map((s) => s.id)).toEqual(["a"]);
     expect(scenariosFor(ex, undefined)).toEqual([]);
+  });
+});
+
+describe("draftExamples", () => {
+  it("uses the open network's device names, and has none for an uploaded network", () => {
+    expect(draftExamples("basic")[0]).toContain("on FW");
+    expect(draftExamples("enterprise")[0]).toContain("on DC-FW");
+    expect(draftExamples(undefined)).toEqual([]);
+    expect(draftExamples("my-upload")).toEqual([]);
   });
 });
