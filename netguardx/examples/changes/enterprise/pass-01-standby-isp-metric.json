@@ -1,0 +1,8 @@
+{
+  "title": "PASS: make ISP B a less-preferred standby",
+  "expected": "SAFE",
+  "description": "Raise the metric of the perimeter firewall's standby default route via EDGE2. Nothing uses it today, so nothing moves.",
+  "changes": [
+    {"operation": "CHANGE_METRIC", "router": "FW-EDGE", "destination": "0.0.0.0/0", "next_hop": "EDGE2", "new_metric": 200}
+  ]
+}

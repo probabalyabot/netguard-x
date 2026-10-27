@@ -1,0 +1,8 @@
+{
+  "title": "PASS: cable the two head-office routers together",
+  "expected": "SAFE",
+  "description": "A new HQ-R1 to HQ-R2 link. No route points at it yet, so traffic is unchanged.",
+  "changes": [
+    {"operation": "ADD_LINK", "node_a": "HQ-R1", "node_b": "HQ-R2"}
+  ]
+}

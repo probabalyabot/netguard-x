@@ -1,0 +1,8 @@
+{
+  "title": "FAIL: delete the guest Wi-Fi isolation rule",
+  "expected": "NOT_RECOMMENDED",
+  "description": "Remove rule 2 on GUEST-R. Guests can now reach the directory server.",
+  "changes": [
+    {"operation": "DELETE_ACL_RULE", "node": "GUEST-R", "rule_index": 1}
+  ]
+}

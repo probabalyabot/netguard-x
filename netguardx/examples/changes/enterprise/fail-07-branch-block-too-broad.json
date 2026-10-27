@@ -1,0 +1,8 @@
+{
+  "title": "FAIL: block branch web traffic at the data-centre firewall",
+  "expected": "NOT_RECOMMENDED",
+  "description": "Meant to stop branch browsing, but the rule covers the orders app too: every branch till is cut off.",
+  "changes": [
+    {"operation": "ADD_ACL_RULE", "position": 0, "rule": {"node": "DC-FW", "source": "10.2.0.0/16", "destination": "any", "protocol": "TCP", "port": 443, "action": "DENY"}}
+  ]
+}

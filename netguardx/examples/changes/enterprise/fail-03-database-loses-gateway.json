@@ -1,0 +1,8 @@
+{
+  "title": "FAIL: remove the primary database's default route",
+  "expected": "NOT_RECOMMENDED",
+  "description": "DB1 loses its only route. Replication, backups and audit logging are silently dropped.",
+  "changes": [
+    {"operation": "DELETE_ROUTE", "router": "DB1", "destination": "0.0.0.0/0"}
+  ]
+}

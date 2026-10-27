@@ -1,0 +1,8 @@
+{
+  "title": "PASS: block the dev lab at the database firewall too",
+  "expected": "SAFE",
+  "description": "An explicit deny for the dev lab on DB-FW. The data-centre firewall already blocks it, so this is hardening with no side effects.",
+  "changes": [
+    {"operation": "ADD_ACL_RULE", "position": 0, "rule": {"node": "DB-FW", "source": "10.30.0.0/24", "destination": "10.20.5.0/24", "protocol": "ANY", "action": "DENY"}}
+  ]
+}

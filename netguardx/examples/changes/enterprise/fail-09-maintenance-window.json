@@ -1,0 +1,16 @@
+{
+  "title": "FAIL: a 9-change maintenance window with one bad change",
+  "expected": "NOT_RECOMMENDED",
+  "description": "Eight harmless changes and one host route that sends DB1 over the storage network. NetGuard-X blames only that change and confirms the batch is safe without it.",
+  "changes": [
+    {"operation": "CHANGE_METRIC", "router": "FW-EDGE", "destination": "0.0.0.0/0", "next_hop": "EDGE2", "new_metric": 200},
+    {"operation": "ADD_LINK", "node_a": "HQ-R1", "node_b": "HQ-R2"},
+    {"operation": "ADD_ACL_RULE", "position": 0, "rule": {"node": "DB-FW", "source": "10.30.0.0/24", "destination": "10.20.5.0/24", "protocol": "ANY", "action": "DENY"}},
+    {"operation": "ADD_LINK", "node_a": "BR1-R", "node_b": "BR2-R", "cost": 5},
+    {"operation": "ADD_ACL_RULE", "position": 1, "rule": {"node": "GUEST-R", "source": "any", "destination": "10.99.0.0/24", "protocol": "ANY", "action": "DENY"}},
+    {"operation": "CHANGE_METRIC", "router": "WAN-R", "destination": "0.0.0.0/0", "next_hop": "CORE1", "new_metric": 30},
+    {"operation": "ADD_ROUTE", "router": "DC-FW", "destination": "10.20.6.0/24", "next_hop": "DC-R"},
+    {"operation": "ADD_ACL_RULE", "position": 0, "rule": {"node": "FW-EDGE", "source": "any", "destination": "10.99.0.0/24", "protocol": "TCP", "port": 22, "action": "DENY"}},
+    {"operation": "ADD_ROUTE", "router": "DC-R", "destination": "10.20.5.10/32", "next_hop": "SAN-R", "note": "send DB1 over the storage network to speed up replication"}
+  ]
+}

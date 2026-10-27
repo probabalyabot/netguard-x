@@ -1,0 +1,8 @@
+{
+  "title": "PASS: add a specific route for the backup subnet",
+  "expected": "SAFE",
+  "description": "DC-FW gets a /24 for the backup subnet through the same next hop its /16 already uses. Same path, same rules.",
+  "changes": [
+    {"operation": "ADD_ROUTE", "router": "DC-FW", "destination": "10.20.6.0/24", "next_hop": "DC-R"}
+  ]
+}

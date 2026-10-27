@@ -1,0 +1,8 @@
+{
+  "title": "FAIL: decommission the CORE1 to data-centre link",
+  "expected": "NOT_RECOMMENDED",
+  "description": "The link goes, but CORE1 still routes the data centre over it. Everything that reaches the data centre through CORE1 fails.",
+  "changes": [
+    {"operation": "DELETE_LINK", "node_a": "CORE1", "node_b": "DC-FW"}
+  ]
+}

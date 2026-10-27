@@ -1,0 +1,9 @@
+{
+  "title": "REVIEW: route floors 3-4 through floors 1-2",
+  "expected": "REVIEW",
+  "description": "Cable HQ-R1 to HQ-R2 and point HQ-R2's default route at HQ-R1. Head-office traffic takes a new path but nothing breaks.",
+  "changes": [
+    {"operation": "ADD_LINK", "node_a": "HQ-R1", "node_b": "HQ-R2"},
+    {"operation": "MODIFY_ROUTE", "router": "HQ-R2", "destination": "0.0.0.0/0", "old_next_hop": "CORE2", "new_next_hop": "HQ-R1"}
+  ]
+}

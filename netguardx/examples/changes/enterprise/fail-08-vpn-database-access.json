@@ -1,0 +1,10 @@
+{
+  "title": "FAIL: give remote staff direct database access",
+  "expected": "NOT_RECOMMENDED",
+  "description": "Three rules, one per firewall on the way, that together let VPN users query the primary database, which policy forbids.",
+  "changes": [
+    {"operation": "ADD_ACL_RULE", "position": 0, "rule": {"node": "FW-EDGE", "source": "VPN", "destination": "DB1", "protocol": "TCP", "port": 5432, "action": "ALLOW"}},
+    {"operation": "ADD_ACL_RULE", "position": 0, "rule": {"node": "DC-FW", "source": "VPN", "destination": "DB1", "protocol": "TCP", "port": 5432, "action": "ALLOW"}},
+    {"operation": "ADD_ACL_RULE", "position": 0, "rule": {"node": "DB-FW", "source": "VPN", "destination": "DB1", "protocol": "TCP", "port": 5432, "action": "ALLOW"}}
+  ]
+}

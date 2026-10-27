@@ -1,0 +1,8 @@
+{
+  "title": "REVIEW: send branch traffic through core switch 1",
+  "expected": "REVIEW",
+  "description": "Make WAN-R prefer CORE1 for its default route. Branch traffic changes path through the core, but every flow is still delivered and allowed.",
+  "changes": [
+    {"operation": "CHANGE_METRIC", "router": "WAN-R", "destination": "0.0.0.0/0", "next_hop": "CORE1", "new_metric": 5}
+  ]
+}

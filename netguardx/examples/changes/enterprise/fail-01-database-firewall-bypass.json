@@ -1,0 +1,8 @@
+{
+  "title": "FAIL: route database traffic over the storage network",
+  "expected": "NOT_RECOMMENDED",
+  "description": "Point DC-R's database route at SAN-R instead of DB-FW. Queries still arrive, but they skip the database firewall.",
+  "changes": [
+    {"operation": "MODIFY_ROUTE", "router": "DC-R", "destination": "10.20.5.0/24", "old_next_hop": "DB-FW", "new_next_hop": "SAN-R"}
+  ]
+}

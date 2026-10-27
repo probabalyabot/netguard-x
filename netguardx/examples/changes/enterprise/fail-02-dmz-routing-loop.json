@@ -1,0 +1,8 @@
+{
+  "title": "FAIL: send DMZ traffic back to the core",
+  "expected": "NOT_RECOMMENDED",
+  "description": "A wrong next hop on the perimeter firewall: its DMZ route points at CORE1, which sends DMZ traffic straight back. The website, mail and VPN loop.",
+  "changes": [
+    {"operation": "MODIFY_ROUTE", "router": "FW-EDGE", "destination": "10.10.0.0/24", "old_next_hop": "DMZ-R", "new_next_hop": "CORE1"}
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "title": "FAIL: allow everything through the perimeter firewall",
+  "expected": "NOT_RECOMMENDED",
+  "description": "A temporary allow-all at the top of FW-EDGE. The data-centre firewall still protects the servers, but management is now reachable from the internet.",
+  "changes": [
+    {"operation": "ADD_ACL_RULE", "position": 0, "rule": {"node": "FW-EDGE", "source": "any", "destination": "any", "protocol": "ANY", "action": "ALLOW"}}
+  ]
+}
