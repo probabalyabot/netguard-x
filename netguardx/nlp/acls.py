@@ -57,8 +57,18 @@ def _device(t: str, clause: Clause, lex: Lexicon) -> Optional[str]:
     return lex.after(t, "on|at") or lex.inherited(clause.device, t)
 
 
+_UNCLEAR = "?"  # "from" / "to" is there but what follows is not a device, address or "any"
+
+
+def _unclear(t: str, word: str) -> str:
+    m = re.search(rf"\b{word}\s+(.+?)(?=\s+(?:on|at|from|to|via)\b|[,;]|$)", t, re.I)
+    said = f"{word} {m.group(1)}" if m else word
+    return f"could not tell which device '{said}' means; name a device, an address or prefix, or say 'any'"
+
+
 def _endpoint(t: str, word: str, lex: Lexicon) -> Optional[str]:
-    """What follows ``word`` ("from" / "to"): "any", a prefix or address, or a device id."""
+    """What follows ``word`` ("from" / "to"): "any", a prefix or address, or a device id; ``_UNCLEAR``
+    when the word is there but what follows is none of those (never silently "any")."""
     m = re.search(rf"\b{word}\s+(?:the\s+)?(\S+)", t, re.I)
     if not m:
         return None
@@ -68,7 +78,7 @@ def _endpoint(t: str, word: str, lex: Lexicon) -> Optional[str]:
     p = re.match(rf"({IP}(?:/\d{{1,2}})?)", m.group(1))
     if p and "/" in p.group(1):
         return p.group(1)
-    return lex.after(t, word)
+    return lex.after(t, rf"{word}(?:\s+the)?") or _UNCLEAR
 
 
 def _add(t: str, clause: Clause, lex: Lexicon) -> Result:
@@ -78,6 +88,9 @@ def _add(t: str, clause: Clause, lex: Lexicon) -> Result:
     action = _ACTIONS[_ACTION.search(t).group(1).lower()]
     source = _endpoint(t, "from", lex)
     destination = _endpoint(t, "to", lex) or "any"
+    for word, value in (("from", source), ("to", destination)):
+        if value == _UNCLEAR:
+            return None, _unclear(t, word)
     if source is None:
         # no "from": "permit APP to BACKUP" names the source before "to"; "block ssh to DB" names none
         others = [d for d in lex.devices_in(t) if d not in (node, destination)]

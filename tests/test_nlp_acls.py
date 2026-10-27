@@ -104,3 +104,18 @@ def test_sentences_give_the_demo_scripts_changes(net, text, script):
 ])
 def test_drafts_apply_to_the_network(net, text):
     apply_changes(net, [Change.model_validate(c) for c in changes(text, net)])
+
+
+@pytest.mark.parametrize("text, said", [
+    ("allow ssh from USER to the moon on FW", "to the moon"),
+    ("allow everything from the car park to DB on FW", "from the car park"),
+    ("block ssh from USER to the database on FW", "to the database"),
+])
+def test_an_endpoint_that_is_not_understood_is_refused_not_read_as_any(net, text, said):
+    # it used to become "any": an allow rule far wider than what was typed
+    assert f"'{said}'" in reason(text, net)
+
+
+def test_the_before_an_endpoint_is_skipped(net):
+    assert changes("block ssh from the internet to DB on FW", net) == [
+        rule(source="INET", destination="DB", action="DENY", protocol="TCP", port=22)]
