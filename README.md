@@ -46,7 +46,8 @@ GUIDE.md walks through the original single-file UI; the React UI in `frontend/` 
 
 The parser (`netguardx/nlp/`) is rule-based, not a language model. It turns text into the same
 schema-checked changes as the JSON files, and checks every draft against the network before anyone
-sees it.
+sees it. **[SYNTAX.md](SYNTAX.md)** is the full guide: every pattern, examples on both networks, and
+what each error means.
 
 | Kind | Examples |
 |---|---|
