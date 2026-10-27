@@ -13,6 +13,9 @@ from netguardx.nlp import interpret
 from netguardx.nlp.score import check, main, score
 
 CORPUS = json.loads((Path(__file__).parent / "nlp_corpus.json").read_text(encoding="utf-8"))
+HERE = Path(__file__).parent
+ENTERPRISE = json.loads((HERE / "nlp_corpus_enterprise.json").read_text(encoding="utf-8"))
+ENTERPRISE_NET = HERE.parent / "netguardx" / "examples" / "enterprise.json"
 
 
 @pytest.mark.parametrize("entry", CORPUS, ids=[e["text"][:45] for e in CORPUS])
@@ -54,3 +57,22 @@ def test_an_address_after_to_is_still_a_destination(net):
     """The router/next-hop address rule must not swallow a destination written as an address."""
     r = interpret("add a route on R3 to 10.0.5.10 via R1", net)
     assert r["changes"] == [{"operation": "ADD_ROUTE", "router": "R3", "destination": "10.0.5.10/32", "next_hop": "R1"}]
+
+
+@pytest.fixture(scope="module")
+def enterprise():
+    from netguardx import Network
+    return Network.model_validate(json.loads(ENTERPRISE_NET.read_text(encoding="utf-8")))
+
+
+@pytest.mark.parametrize("entry", ENTERPRISE, ids=[e["text"][:45] for e in ENTERPRISE])
+def test_enterprise_corpus_entry(enterprise, entry):
+    ok, got = check(entry, enterprise)
+    assert ok, f"expected {entry}, got {got}"
+
+
+def test_enterprise_corpus_covers_every_enterprise_scenario():
+    folder = HERE.parent / "netguardx" / "examples" / "changes" / "enterprise"
+    scenarios = {"-".join(p.stem.split("-")[:2]) for p in folder.glob("*.json")}
+    covered = {e["note"].split("/")[1].split(",")[0] for e in ENTERPRISE if e.get("note", "").startswith("enterprise/")}
+    assert covered == scenarios

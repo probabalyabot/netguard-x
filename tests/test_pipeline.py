@@ -117,3 +117,18 @@ def test_session_reads_typed_commands_from_stdin(monkeypatch, capsys):
     assert main(["session", BASIC, "-", "--operator"]) == 0
     out = capsys.readouterr().out
     assert "as an operator" in out and "2 executed" in out
+
+
+@pytest.mark.parametrize("name, network, expected", [
+    ("session.txt", "basic", {"EXECUTED": 5, "HELD": 1, "REJECTED": 7, "NOT UNDERSTOOD": 1}),
+    ("enterprise-session.txt", "enterprise", {"EXECUTED": 6, "HELD": 2, "REJECTED": 10, "NOT UNDERSTOOD": 2}),
+])
+def test_demo_sessions_end_as_their_readme_says(name, network, expected):
+    from netguardx import Network
+
+    net = Network.model_validate(json.loads((ROOT / "netguardx" / "examples" / f"{network}.json").read_text(encoding="utf-8")))
+    s = Session(net)
+    for i, line in enumerate((ROOT / "test-scripts" / name).read_text(encoding="utf-8").splitlines(), 1):
+        s.feed(line, i)
+    got = s.summary()
+    assert {k: got[k] for k in expected} == expected

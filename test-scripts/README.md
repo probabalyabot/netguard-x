@@ -69,3 +69,56 @@ network as the earlier lines left it, so in a session the order matters.
 
 A suggested demo order: `pass-01`, `fail-01` (the headline), `review-01`, `fail-02`, `fail-07`,
 then the session.
+
+## The 60-device enterprise network
+
+`netguardx/examples/enterprise.json` is a larger, hand-designed network: two internet providers
+(EDGE1, EDGE2), a perimeter firewall (FW-EDGE) with a DMZ (WEB1, WEB2, MAIL, DNS, VPN), two core
+switches (CORE1, CORE2), a data centre behind DC-FW (APP1–3, AUTH, FILES, PRINT, LOG, BACKUP), the
+databases DB1 and DB2 behind DB-FW, a storage network (SAN-R) that is wired to the databases but
+never used for queries, management (JUMP, MON, NOC), head office (HQ-R1, HQ-R2, HQ-PC1–8), three
+branches behind WAN-R (BR1-R … BR3-R, each with two PCs and a till), guest Wi-Fi (GUEST-R) and a
+dev lab (DEV-R, DEV1, DEV2, CI).
+
+Its 15 scenarios are in `netguardx/examples/changes/enterprise/`. In the UI, pick the network on
+Overview and they replace the three-tier ones on Change analysis. Each can be typed instead
+(checked by `tests/nlp_corpus_enterprise.json`):
+
+| Scenario | Verdict | Type this |
+|---|---|---|
+| `pass-01` standby ISP metric | Safe | set the metric of FW-EDGE's default route via EDGE2 to 200 |
+| `pass-02` link the head-office routers | Safe | cable HQ-R1 to HQ-R2 |
+| `pass-03` dev lab denied at DB-FW too | Safe | deny everything from 10.30.0.0/24 to 10.20.5.0/24 on DB-FW at the top |
+| `pass-04` specific backup route | Safe | add a route on DC-FW for 10.20.6.0/24 via DC-R |
+| `review-01` branches via CORE1 | Review | set the metric of WAN-R's default route via CORE1 to 5 |
+| `review-02` floors 3–4 via floors 1–2 | Review | cable HQ-R1 to HQ-R2, then change the default route on HQ-R2 from CORE2 to HQ-R1 |
+| `fail-01` database-firewall bypass | Not recommended, critical | change DC-R's route for 10.20.5.0/24 from DB-FW to SAN-R |
+| `fail-02` DMZ routing loop | Not recommended | change FW-EDGE's route for 10.10.0.0/24 from DMZ-R to CORE1 |
+| `fail-03` database loses its route | Not recommended | remove the default route on DB1 |
+| `fail-04` cut a core link | Not recommended | decommission the link between CORE1 and DC-FW |
+| `fail-05` open perimeter | Not recommended | allow everything from any to any on FW-EDGE at the top |
+| `fail-06` guest isolation removed | Not recommended | delete rule 2 on GUEST-R |
+| `fail-07` branch block too broad | Not recommended | block https from 10.2.0.0/16 to any on DC-FW at the top |
+| `fail-08` VPN to the database | Not recommended | allow postgres from VPN to DB1 on FW-EDGE at the top; allow postgres from VPN to DB1 on DC-FW at the top; allow postgres from VPN to DB1 on DB-FW at the top |
+| `fail-09` maintenance window | Not recommended | the nine lines in `tests/nlp_corpus_enterprise.json`, one change per line |
+
+From the command line:
+
+    python -m netguardx analyze netguardx/examples/enterprise.json netguardx/examples/changes/enterprise/fail-01-database-firewall-bypass.json
+    python -m netguardx draft netguardx/examples/enterprise.json "delete rule 2 on GUEST-R" --analyze
+
+**Typed session:** `enterprise-session.txt` runs the scenarios as commands, one per line:
+
+    python -m netguardx session netguardx/examples/enterprise.json test-scripts/enterprise-session.txt
+
+It ends with 6 executed, 2 held, 10 rejected and 2 not understood. Two things to point out:
+
+- The three VPN rules go in one at a time. The first two are executed, because the next firewall
+  along still blocks the traffic; the third would complete the path to the database and is
+  rejected. Verdicts judge policies, not how many layers of defence are left.
+- Because those two rules are now in place, the Cisco host route a few lines later (DB1 over the
+  storage network, skipping DB-FW) is rejected for letting VPN users reach the database, on top of
+  the usual bypass findings.
+
+A suggested order: `pass-01`, `fail-01` (the headline), `review-01`, `fail-08`, `fail-09`, then the
+session.

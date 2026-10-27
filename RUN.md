@@ -87,6 +87,8 @@ The sample files are in the `samples/` folder:
 6. **Type a change.** On Change analysis, type `block ssh from USER to DB on FWW` in the Drafter box (note the typo) and press **Draft** or Ctrl+Enter. The row explains the problem; click **Use FW instead of FWW**. Then type `send DB traffic on R1 via R3` and click **Draft and simulate**: it is the firewall bypass again, written as a sentence. A pasted block such as `R1(config)#` followed by `ip route 10.0.7.0 255.255.255.0 R3` works too. Sentences for every demo change are in `test-scripts/README.md`.
 7. **Research evaluation.** Click **Import summary.json** and choose `samples/eval-summary.json` to see charts immediately. Or pick sizes (shown in devices: 14, 26, 51, 63, 76), commands, a first seed and how many seeds, and click **Run evaluation**. It runs in the background with a progress bar and a Cancel button; you can leave the screen and come back. 14 and 26 devices with 30 commands and one seed take about 10 seconds; the 50–75 device sizes take minutes. Two or more seeds add error bars; every run adds where the time goes, a scaling chart with projections, and per-command timings. Timings differ from machine to machine.
 
+8. **A bigger network.** On Overview, pick **Enterprise network (60 devices)** in the Network list. Change analysis now lists its 15 scenarios and opens the first: the database-firewall bypass. Simulate it, then try `fail-09`, a 9-change maintenance window where only the one bad change is blamed. Sentences for all of them are in `test-scripts/README.md`.
+
 Other ways to enter a change: the **Form** switch, the **JSON** switch, or the example scenarios list.
 
 ## 8. Stop everything
@@ -95,7 +97,7 @@ Press `Ctrl+C` in each terminal.
 
 ## Run the checks (optional)
 
-    python -m pytest -q tests        # backend, 402 tests (run in terminal 1's environment)
+    python -m pytest -q tests        # backend, 474 tests (run in terminal 1's environment)
     cd frontend && npm test          # frontend unit tests
     npm run build                    # type-check and production build
 

@@ -32,9 +32,10 @@ Run everything from this folder (the one that contains `netguardx/`). For the we
     python -m netguardx analyze netguardx/examples/basic.json netguardx/examples/changes/route-via-r3.json
     python -m netguardx draft netguardx/examples/basic.json "block ssh from USER to DB on FW"
     python -m netguardx session netguardx/examples/basic.json test-scripts/session.txt
+    python -m netguardx session netguardx/examples/enterprise.json test-scripts/enterprise-session.txt
     python -m netguardx eval --devices 50 63 75 --commands 100 --seeds 1 2 3 --out eval-results/run1
-    python -m pytest -q tests            # 402 tests
-    cd frontend && npm test              # 23 tests
+    python -m pytest -q tests            # 474 tests
+    cd frontend && npm test              # 25 tests
 
 `analyze` exits with code 1 when the verdict is NOT_RECOMMENDED, so it can gate a CI pipeline.
 Flags: `--json`, `--out FILE`, `--no-probes`, `--weights '{"broken_flows": 25}'`.
@@ -76,8 +77,10 @@ that names an unknown device never falls back to a config header's device. In th
 same parser drives the Drafter on the Change analysis screen.
 
 **Parse rate.** The parser drafts exactly the expected changes for 80 of 80 entries in
-`tests/nlp_corpus.json` (`python -m netguardx.nlp.score tests/nlp_corpus.json`). That corpus was
-written alongside the grammar, so it measures coverage, not accuracy. An accuracy figure needs a
+`tests/nlp_corpus.json` (`python -m netguardx.nlp.score tests/nlp_corpus.json`) and 26 of 26 in
+`tests/nlp_corpus_enterprise.json` on the 60-device network (add
+`--network netguardx/examples/enterprise.json`). Both were written alongside the grammar, so they
+measure coverage, not accuracy. An accuracy figure needs a
 held-out set written by someone who has not read the grammar; that is pending.
 
 ## The gatekeeper
@@ -175,6 +178,9 @@ as background jobs with a progress bar, and imports `summary.json` from larger c
 - Unsafe-command counts for the weak arms are undercounts: once a network is broken, later damage is
   treated as already present.
 - The parser's 100% is a coverage figure on a developer-written corpus, not an accuracy figure.
+- Verdicts look at policies and flows, not at how many firewalls stand in the way. A rule that
+  removes one layer of several is SAFE while the others still block (see the VPN lines in
+  `test-scripts/enterprise-session.txt`).
 - The risk weights are starting points, not calibrated values.
 
 ## Modules
@@ -203,9 +209,22 @@ API: `GET /api/health`, `GET /api/examples`, `POST /api/verify`, `POST /api/simu
 `POST /api/diff`, `POST /api/interpret`, `POST /api/eval/run`, `POST /api/eval/jobs`,
 `GET /api/eval/jobs/{id}`, `POST /api/eval/jobs/{id}/cancel`.
 
-## Example scenarios
+## Example networks and scenarios
 
-`netguardx/examples/changes/` (used by the UI's scenario list):
+Two built-in networks, both in the UI's network list:
+
+- `netguardx/examples/basic.json`, the **three-tier app network** (9 devices): the original demo.
+- `netguardx/examples/enterprise.json`, an **enterprise network** (60 devices), hand-designed for
+  larger demos: two internet providers, a perimeter firewall and DMZ (web, mail, DNS, VPN), two
+  core switches, a data centre behind its own firewall with the databases behind a third, a storage
+  network that is physically wired to the databases but never used for queries, management, head
+  office, three branches over a WAN, guest Wi-Fi and a dev lab. 34 flows and 24 requirements, all
+  met as shipped.
+
+Scenarios for the three-tier network are in `netguardx/examples/changes/`; scenarios for another
+network go in `netguardx/examples/changes/<network>/`. The UI lists only the open network's.
+
+Three-tier network:
 
 | File | Expected verdict |
 |------|------------------|
@@ -216,5 +235,18 @@ API: `GET /api/health`, `GET /api/examples`, `POST /api/verify`, `POST /api/simu
 | `backup-link.json` (path changes, still allowed) | REVIEW |
 | `safe-metric.json` | SAFE |
 
-`test-scripts/` holds twelve labelled demo changes, each also written as a sentence; see
-`test-scripts/README.md`.
+Enterprise network (`changes/enterprise/`, each file states its expected verdict and
+`tests/test_scenarios.py` checks it):
+
+| File | Expected verdict |
+|------|------------------|
+| `pass-01` … `pass-04` (standby ISP metric, a new link, an extra deny, a more specific route) | SAFE |
+| `review-01`, `review-02` (branch and head-office traffic take a new path) | REVIEW |
+| `fail-01-database-firewall-bypass` (database route over the storage network) | NOT_RECOMMENDED |
+| `fail-02-dmz-routing-loop`, `fail-03-database-loses-gateway`, `fail-04-cut-core1-to-data-centre` | NOT_RECOMMENDED |
+| `fail-05-open-perimeter`, `fail-06-guest-isolation-removed`, `fail-07-branch-block-too-broad` | NOT_RECOMMENDED |
+| `fail-08-vpn-database-access` (one rule on each of the three firewalls) | NOT_RECOMMENDED |
+| `fail-09-maintenance-window` (9 changes, one bad; only that one is blamed) | NOT_RECOMMENDED |
+
+`test-scripts/` holds the labelled demo changes for the three-tier network, the sentences for both
+networks, and a typed session for each; see `test-scripts/README.md`.
