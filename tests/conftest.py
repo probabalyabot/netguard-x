@@ -6,8 +6,8 @@ import pytest
 
 from netguardx import Network
 
-# Tests never call Gemini, even when a key is in .env.
-os.environ["NETGUARDX_GEMINI"] = "0"
+# Tests never call a language model (Ollama or Gemini), whatever .env says.
+os.environ["NETGUARDX_LLM"] = "0"
 
 EX = Path(__file__).parent.parent / "netguardx" / "examples"
 
