@@ -55,6 +55,7 @@ code, .mono { @apply font-mono text-[12.5px]; }
 .react-flow__controls { @apply border border-line rounded overflow-hidden shadow-none; }
 .react-flow__controls-button { background: rgb(var(--panel)) !important; border-bottom: 1px solid rgb(var(--line)) !important; fill: rgb(var(--muted)) !important; }
 .react-flow__controls-button:hover { background: rgb(var(--raised)) !important; }
+.react-flow__controls-fullscreen svg { stroke: rgb(var(--muted)); }
 .react-flow__minimap { background: rgb(var(--panel)) !important; border: 1px solid rgb(var(--line)); border-radius: 6px; }
 
 @keyframes dash { to { stroke-dashoffset: -24; } }

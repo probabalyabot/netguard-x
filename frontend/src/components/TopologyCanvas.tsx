@@ -1,10 +1,10 @@
 import {
-  BaseEdge, Background, BackgroundVariant, Controls, Handle, MarkerType, MiniMap, Position, ReactFlow, ReactFlowProvider,
-  type Edge, type EdgeProps, type Node, type NodeProps,
+  BaseEdge, Background, BackgroundVariant, ControlButton, Controls, Handle, MarkerType, MiniMap, Position, ReactFlow, ReactFlowProvider,
+  useReactFlow, type Edge, type EdgeProps, type Node, type NodeProps,
 } from "@xyflow/react";
 import clsx from "clsx";
-import { BrickWall, Globe, Monitor, Router, Server, type LucideIcon } from "lucide-react";
-import { memo, useMemo } from "react";
+import { BrickWall, Globe, Maximize2, Minimize2, Monitor, Router, Server, type LucideIcon } from "lucide-react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import type { NodeType, Topology } from "../api/types";
 import { toneVar, type Tone } from "../lib/format";
 
@@ -100,7 +100,47 @@ function Legend({ view, hasOverlay }: { view: CanvasView; hasOverlay: boolean })
   );
 }
 
+const FIT = { padding: 0.22 };
+
+/**
+ * Expands the map (with its legend) to fill the window, and asks for true fullscreen where the
+ * browser allows it; embedded browsers often refuse, and the expanded view still works there.
+ * Esc or the button again closes it. The map re-fits after every size change.
+ */
+function useFullscreen() {
+  const ref = useRef<HTMLDivElement>(null);
+  const [full, setFull] = useState(false);
+  const { fitView } = useReactFlow();
+  // Re-fit once the new size has settled; React Flow measures it on the next frames.
+  const first = useRef(true);
+  useEffect(() => {
+    if (first.current) { first.current = false; return; }
+    const t = setTimeout(() => void fitView(FIT), 200);
+    return () => clearTimeout(t);
+  }, [full, fitView]);
+  useEffect(() => {
+    if (!full) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setFull(false); };
+    // Leaving true fullscreen (Esc is handled by the browser then) also closes the expanded view.
+    const onChange = () => { if (!document.fullscreenElement) setFull(false); };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("fullscreenchange", onChange);
+    return () => { document.removeEventListener("keydown", onKey); document.removeEventListener("fullscreenchange", onChange); };
+  }, [full]);
+  const toggle = () => {
+    if (full) {
+      setFull(false);
+      if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
+    } else {
+      setFull(true);
+      if (document.fullscreenEnabled) void ref.current?.requestFullscreen().catch(() => {});
+    }
+  };
+  return { ref, full, toggle };
+}
+
 function Inner({ topology, view = "plain", overlays = [], marks = {}, selected, onSelect, minimap, hideLegend, ariaLabel }: Props) {
+  const fs = useFullscreen();
   const { nodes, edges } = useMemo(() => {
     const raw = topology.nodes;
     const xs = raw.map((n) => n.x), ys = raw.map((n) => n.y);
@@ -113,7 +153,8 @@ function Inner({ topology, view = "plain", overlays = [], marks = {}, selected, 
     const dimOthers = overlays.length > 0;
 
     const nodes: DeviceNode[] = raw.map((n) => ({
-      id: n.id, type: "device", position: { x: pos[n.id].x - R, y: pos[n.id].y - R }, draggable: false, selectable: true,
+      // A fixed size: the minimap skips nodes without one, and these nodes are never resized.
+      id: n.id, type: "device", position: { x: pos[n.id].x - R, y: pos[n.id].y - R }, width: 2 * R, height: 2 * R, draggable: false, selectable: true,
       data: { id: n.id, label: n.label || n.id, ip: n.ip, type: n.type, mark: marks[n.id], selected: selected === n.id, dim: dimOthers && !onPath.has(n.id), onPath: onPath.has(n.id) },
     }));
 
@@ -137,15 +178,20 @@ function Inner({ topology, view = "plain", overlays = [], marks = {}, selected, 
   }, [topology, view, overlays, marks, selected]);
 
   return (
-    <div className="flex h-full w-full flex-col" role="img" aria-label={ariaLabel}>
+    <div ref={fs.ref} className={clsx("flex flex-col", fs.full ? "fixed inset-0 z-50 bg-ink" : "h-full w-full")} role="img" aria-label={ariaLabel}>
       <div className="relative min-h-0 flex-1">
       <ReactFlow nodes={nodes} edges={edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes}
-        fitView fitViewOptions={{ padding: 0.22 }} minZoom={0.2} maxZoom={2.5}
+        fitView fitViewOptions={FIT} minZoom={0.2} maxZoom={2.5}
         nodesDraggable={false} nodesConnectable={false} edgesFocusable={false}
         onNodeClick={(_, n) => onSelect?.(n.id === selected ? null : n.id)} onPaneClick={() => onSelect?.(null)}>
         <Background variant={BackgroundVariant.Dots} gap={22} size={1} color="rgb(var(--line))" />
-        <Controls showInteractive={false} position="top-right" fitViewOptions={{ padding: 0.22 }} />
-        {minimap && <MiniMap pannable zoomable nodeColor="rgb(var(--line-strong))" maskColor="rgb(14 17 22 / 0.7)" />}
+        <Controls showInteractive={false} position="top-right" fitViewOptions={FIT}>
+          <ControlButton onClick={fs.toggle} title={fs.full ? "Exit fullscreen (Esc)" : "Fullscreen"} aria-label={fs.full ? "Exit fullscreen" : "Fullscreen"}
+            className="react-flow__controls-fullscreen">
+            {fs.full ? <Minimize2 style={{ fill: "none" }} strokeWidth={2.25} /> : <Maximize2 style={{ fill: "none" }} strokeWidth={2.25} />}
+          </ControlButton>
+        </Controls>
+        {minimap && <MiniMap pannable zoomable nodeColor="rgb(var(--muted))" nodeBorderRadius={22} maskColor="rgb(14 17 22 / 0.7)" />}
       </ReactFlow>
       </div>
       {!hideLegend && <Legend view={view} hasOverlay={overlays.length > 0} />}
