@@ -5,11 +5,12 @@ import { TopologyCanvas, TYPE_LABEL } from "../components/TopologyCanvas";
 import { ResultSummary } from "../components/ResultSummary";
 import { Chip, Empty, Notice, PageHeader, Spinner, Stat, VerdictBadge } from "../components/ui";
 import { errMsg, toneText } from "../lib/format";
+import { scenariosFor } from "../lib/scenarios";
 import { useApp } from "../state/AppState";
 import type { NodeType } from "../api/types";
 
 function NetworkPicker() {
-  const { examples, networkLabel, loadNetwork, baselineError } = useApp();
+  const { examples, networkLabel, loadNetwork, baselineError, setScenario, setChanges } = useApp();
   const [err, setErr] = useState<string | null>(null);
   const file = useRef<HTMLInputElement>(null);
   const upload = async (f: File) => {
@@ -22,7 +23,14 @@ function NetworkPicker() {
       <label className="label" htmlFor="net">Network</label>
       <div className="flex flex-wrap gap-2">
         <select id="net" className="field !w-auto min-w-[220px] flex-1" value={current} disabled={!examples}
-          onChange={(e) => { const n = examples?.networks.find((x) => x.id === e.target.value); if (n) loadNetwork(n.network, n.title); }}>
+          onChange={(e) => {
+            const n = examples?.networks.find((x) => x.id === e.target.value);
+            if (!n) return;
+            // open the new network's first scenario; the old change set would not apply to it
+            const sc = scenariosFor(examples, n.id)[0] ?? null;
+            setScenario(sc); setChanges(sc?.changes ?? []);
+            loadNetwork(n.network, n.title);
+          }}>
           {!current && <option value="">{networkLabel || "Loading…"}</option>}
           {examples?.networks.map((n) => <option key={n.id} value={n.id}>{n.title}</option>)}
         </select>

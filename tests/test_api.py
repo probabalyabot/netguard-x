@@ -18,6 +18,21 @@ def test_examples():
     d = client.get("/api/examples").json()
     assert d["networks"][0]["id"] == "basic" and len(d["changes"]) >= 5
     assert "enterprise" in {n["id"] for n in d["networks"]}
+    nets = {n["id"] for n in d["networks"]}
+    assert all(c["network"] in nets for c in d["changes"])
+    assert len({c["id"] for c in d["changes"]}) == len(d["changes"])
+
+
+def test_scenarios_in_a_folder_belong_to_that_network(tmp_path, monkeypatch):
+    import netguardx.api as api_module
+
+    (tmp_path / "changes" / "big").mkdir(parents=True)
+    (tmp_path / "basic.json").write_text(json.dumps(NET))
+    (tmp_path / "changes" / "one.json").write_text(json.dumps({"title": "basic one", "changes": []}))
+    (tmp_path / "changes" / "big" / "one.json").write_text(json.dumps({"title": "big one", "changes": []}))
+    monkeypatch.setattr(api_module, "EXAMPLES", tmp_path)
+    got = {c["id"]: c["network"] for c in client.get("/api/examples").json()["changes"]}
+    assert got == {"one": "basic", "big/one": "big"}
 
 
 def test_verify():

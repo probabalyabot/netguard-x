@@ -96,12 +96,17 @@ def health():
 def examples():
     networks = []
     for f in sorted(EXAMPLES.glob("*.json")):
-        d = json.loads(f.read_text())
+        d = json.loads(f.read_text(encoding="utf-8"))
         networks.append({"id": f.stem, "title": d.get("name", f.stem), "network": d})
+    # examples/changes/*.json are for the basic network; examples/changes/<network>/*.json for <network>
     changes = []
     for f in sorted((EXAMPLES / "changes").glob("*.json")):
-        d = json.loads(f.read_text())
+        d = json.loads(f.read_text(encoding="utf-8"))
         changes.append({"id": f.stem, "network": "basic", **d})
+    for folder in sorted(p for p in (EXAMPLES / "changes").iterdir() if p.is_dir()):
+        for f in sorted(folder.glob("*.json")):
+            d = json.loads(f.read_text(encoding="utf-8"))
+            changes.append({"id": f"{folder.name}/{f.stem}", "network": folder.name, **d})
     return {"networks": networks, "changes": changes}
 
 

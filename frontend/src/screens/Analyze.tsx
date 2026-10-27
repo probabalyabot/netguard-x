@@ -8,6 +8,7 @@ import { Empty, Notice, PageHeader, Segmented, Spinner } from "../components/ui"
 import { describeChange } from "../lib/describe";
 import { draftedChanges, replaceWord, typoFix, withDraft } from "../lib/drafts";
 import { errMsg } from "../lib/format";
+import { exampleNetworkId, scenariosFor } from "../lib/scenarios";
 import { validateChanges } from "../lib/validate";
 import { DEFAULT_WEIGHTS, useApp } from "../state/AppState";
 
@@ -145,7 +146,7 @@ function Options() {
 export function Analyze() {
   const { network, examples, scenario, setScenario, changes, setChanges, report, reportError, analyzing, analyze, stale, networkLabel } = useApp();
   const [mode, setMode] = useState<"builder" | "json">("builder");
-  const scenarios = (examples?.changes ?? []);
+  const scenarios = scenariosFor(examples, exampleNetworkId(examples, networkLabel));
 
   if (!network) return <Empty title="No network loaded">Load a network on the Overview screen first.</Empty>;
 
@@ -166,7 +167,7 @@ export function Analyze() {
                   </button>
                 </li>
               ))}
-              {scenarios.length === 0 && <li className="px-4 py-3 text-sm text-muted">No example scenarios were returned by the API.</li>}
+              {scenarios.length === 0 && <li className="px-4 py-3 text-sm text-muted">No example scenarios for this network. Draft a change from a sentence or build one below.</li>}
             </ul>
           </section>
 
