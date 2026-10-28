@@ -25,6 +25,9 @@ _SPLIT = re.compile(r",?\s+(?:and\s+)?then\s+|\.(?=\s|$)|;|,\s*(?:but\s+|and\s+)
 _LIST_MARKER = re.compile(r"^\s*(?:\d{1,3}[.)]|[-*•])\s+")
 _PROMPT = re.compile(r"^\s*([A-Za-z0-9_.-]+)\s*(?:\(config[^)]*\))?\s*#\s*(.*)$")
 _ON_DEVICE = re.compile(r"^\s*on\s+([A-Za-z0-9_.-]+)\s*:\s*(.*)$", re.I)
+# "on R1, send ..." : after splitting at the comma, a clause that is only "on <device>" names the
+# device for the next clause only (a header with ":" carries on to the following lines)
+_ON_ONLY = re.compile(r"^\s*on\s+([A-Za-z0-9_.-]+)\s*$", re.I)
 _CONFIGURE = re.compile(r"^\s*(?:configure|config)\s+(?:device\s+)?([A-Za-z0-9_.-]+)\s*$", re.I)
 _SESSION_ONLY = re.compile(r"^\s*(?:!.*|conf(?:igure)?\s+t(?:erminal)?|end|exit|write(?:\s+mem(?:ory)?)?)\s*$", re.I)
 
@@ -67,5 +70,13 @@ def split(text: str, device_of=None) -> list[Clause]:
                 context = dev
                 line = m.group(2) if m.lastindex and m.lastindex >= 2 else ""
                 break
-        out += [Clause(c, context) for c in _SPLIT.split(line) if c and c.strip()]
+        just_named: Optional[str] = None
+        for c in _SPLIT.split(line):
+            if not c or not c.strip():
+                continue
+            if (m := _ON_ONLY.match(c)) and (dev := resolve(m.group(1))):
+                just_named = dev
+                continue
+            out.append(Clause(c, just_named or context))
+            just_named = None
     return out

@@ -85,3 +85,9 @@ def test_and_between_devices_still_does_not_split(net):
 def test_list_markers_are_ignored(net):
     r = interpret("1. block ssh from USER to DB on FW\n2) delete rule 1 on FW\n- connect R2 and R3", net)
     assert len(r["matched"]) == 3 and not r["unparsed"]
+
+
+def test_on_device_comma_names_the_device_like_on_device_colon(net):
+    r = interpret("on R1, send traffic for DB via R3. On FW, block ssh from USER to DB", net)
+    assert [m["understood_as"] for m in r["matched"]] == [
+        "Modify route on R1: 10.0.5.0/24 next hop -> R3", "Add ACL rule on FW: DENY USER -> DB TCP port 22"]

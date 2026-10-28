@@ -28,7 +28,8 @@ doesn't show them.
 
 1. **Name devices exactly as the network names them.** On the enterprise network there is no `DB` or
    `FW`; there are `DB1`, `DB2`, `DB-FW`, `DC-FW` and `FW-EDGE`.
-2. **Firewall rules need `on <device>`:** the device the rule goes on. `via` is for routes.
+2. **Firewall rules need `on <device>`:** the device the rule goes on. `via` is for routes. It can
+   also go in front: "on FW, block ssh from USER to DB" (that sentence only).
 3. **Routes need a router (`on R1`) and a destination.** Adding or changing one also needs a next
    hop (`via R3`).
 4. **Rule numbers and positions count from 1.** "rule 1" is the first rule.
