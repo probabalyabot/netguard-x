@@ -1,0 +1,57 @@
+{
+  // NetGuard-X demo. Open this folder (netguard-x) in VS Code and press Ctrl+Shift+B (Cmd+Shift+B on
+  // a Mac): it starts the API and the UI side by side, waits until both are ready, then opens the
+  // app in the browser. Needs the setup in RUN.md first (.venv and npm install in frontend/).
+  // Stop: Terminal > Terminate Task (or the trash icon on each task terminal).
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Demo",
+      "group": { "kind": "build", "isDefault": true },
+      "dependsOn": ["NetGuard-X API", "NetGuard-X UI"],
+      "dependsOrder": "parallel",
+      "type": "process",
+      "command": "xdg-open",
+      "windows": { "command": "explorer.exe" },
+      "osx": { "command": "open" },
+      "args": ["http://localhost:5173"],
+      "presentation": { "reveal": "never" },
+      "problemMatcher": []
+    },
+    {
+      "label": "NetGuard-X API",
+      "type": "process",
+      "command": "${workspaceFolder}/.venv/bin/python",
+      "windows": { "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe" },
+      "args": ["-m", "netguardx", "serve"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "isBackground": true,
+      "presentation": { "panel": "dedicated", "group": "demo" },
+      "problemMatcher": {
+        "owner": "netguardx-api",
+        "pattern": { "regexp": "^__never_matches__$" },
+        "background": { "activatesOnStart": true, "beginsPattern": ".", "endsPattern": "Uvicorn running on" }
+      }
+    },
+    {
+      "label": "NetGuard-X UI",
+      "type": "shell",
+      "command": "npm run dev",
+      "options": { "cwd": "${workspaceFolder}/frontend" },
+      "windows": {
+        "options": {
+          "cwd": "${workspaceFolder}\\frontend",
+          "shell": { "executable": "cmd.exe", "args": ["/d", "/c"] }
+        }
+      },
+      "isBackground": true,
+      "presentation": { "panel": "dedicated", "group": "demo" },
+      "problemMatcher": {
+        "owner": "netguardx-ui",
+        // Vite 8 puts colour codes inside "Local:", so "ready in" is matched as well
+        "pattern": { "regexp": "^__never_matches__$" },
+        "background": { "activatesOnStart": true, "beginsPattern": ".", "endsPattern": "ready in|Local:" }
+      }
+    }
+  ]
+}

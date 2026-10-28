@@ -61,6 +61,11 @@ The first `npm install` takes a minute or two. Success looks like `Local: http:/
 
 Go to **http://localhost:5173** in your browser.
 
+**Shortcut in VS Code:** once steps 1–3 have worked once (`.venv` set up and `npm install` done),
+open this folder in VS Code and press **Ctrl+Shift+B** (Cmd+Shift+B on a Mac). It starts the API
+and the UI in two terminal panels and opens the app when both are ready (`.vscode/tasks.json`).
+Stop them with Terminal > Terminate Task.
+
 The top-right of the page should say **API v0.1.0** with a green dot. If it says "API offline", go back to step 2.
 
 ## 5. Load the sample input
