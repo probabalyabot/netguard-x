@@ -35,8 +35,12 @@ DEFAULT_ORDER = "ollama,gemini"
 
 OLLAMA_HOST = "http://127.0.0.1:11434"
 OLLAMA_MODEL = "llama3.1:8b"  # tested against qwen2.5-coder:7b: more faithful to meaning
-OLLAMA_TIMEOUT_S = 30.0  # a cold start loads the model into the GPU first
-OLLAMA_CTX = 8192        # the enterprise network's summary is longer than Ollama's default context
+# A cold start loads the model into the GPU first, so the read timeout is long. The connect timeout
+# is short: on Windows a refused local connection is retried for about 2 s before failing.
+OLLAMA_TIMEOUT = httpx.Timeout(30.0, connect=0.5)
+# The enterprise network's summary is longer than Ollama's default context. Loading with a different
+# num_ctx makes Ollama reload the model, so the warm-up must use this same value.
+OLLAMA_OPTIONS = {"temperature": 0, "num_ctx": 8192}
 
 GEMINI_API = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 # Tried in order. A model that is missing, busy, failing or slow moves on to the next one.
@@ -180,17 +184,21 @@ def _lines_of(raw: str) -> list[str]:
     return [str(x).strip() for x in lines if str(x).strip()]
 
 
+def _ollama_url(path: str) -> str:
+    return f"{(_setting('OLLAMA_HOST') or OLLAMA_HOST).rstrip('/')}{path}"
+
+
 def _ask_ollama(request: str) -> list[str] | None:
     model = _setting("OLLAMA_MODEL") or OLLAMA_MODEL
     try:
-        r = httpx.post(f"{(_setting('OLLAMA_HOST') or OLLAMA_HOST).rstrip('/')}/api/chat", timeout=OLLAMA_TIMEOUT_S, json={
+        r = httpx.post(_ollama_url("/api/chat"), timeout=OLLAMA_TIMEOUT, json={
             "model": model, "stream": False, "format": SCHEMA, "keep_alive": "60m",
-            "options": {"temperature": 0, "num_ctx": OLLAMA_CTX},
+            "options": OLLAMA_OPTIONS,
             "messages": [{"role": "system", "content": SYSTEM}, {"role": "user", "content": request}],
         })
         r.raise_for_status()
         return _lines_of(r.json()["message"]["content"])
-    except httpx.ConnectError:
+    except (httpx.ConnectError, httpx.ConnectTimeout):
         log.info("Ollama is not running; skipping it")
     except Exception as e:  # never let the rewrite break drafting
         log.warning("Ollama %s failed: %s", model, type(e).__name__)
@@ -282,7 +290,7 @@ def warm_up() -> None:
     if not enabled() or "ollama" not in providers():
         return
     try:
-        httpx.post(f"{(_setting('OLLAMA_HOST') or OLLAMA_HOST).rstrip('/')}/api/generate", timeout=OLLAMA_TIMEOUT_S,
-                   json={"model": _setting("OLLAMA_MODEL") or OLLAMA_MODEL, "keep_alive": "60m"})
+        httpx.post(_ollama_url("/api/generate"), timeout=OLLAMA_TIMEOUT, json={
+            "model": _setting("OLLAMA_MODEL") or OLLAMA_MODEL, "keep_alive": "60m", "options": OLLAMA_OPTIONS})
     except Exception:
         pass

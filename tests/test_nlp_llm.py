@@ -114,3 +114,16 @@ def test_network_summary_names_devices_and_numbers_rules(net):
     s = llm.describe_network(net)
     assert "FW | firewall" in s and "on FW: rule 1: allow tcp/5432 from APP to DB" in s
     assert "P3: USER must never reach DB" in s and "->" not in s  # the parser's words, no arrows
+
+
+def test_warm_up_loads_the_model_with_the_settings_drafts_use(on, monkeypatch):
+    """A different num_ctx makes Ollama reload the model, which made the first draft take 8 s."""
+    sent = []
+    monkeypatch.setattr(httpx, "post", lambda url, **k: sent.append((url, k["json"])))
+    llm.warm_up()
+    [(url, body)] = sent
+    assert url.endswith("/api/generate") and body["options"] == llm.OLLAMA_OPTIONS
+
+
+def test_ollama_connect_timeout_is_short():
+    assert llm.OLLAMA_TIMEOUT.connect <= 1
