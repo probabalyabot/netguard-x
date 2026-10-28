@@ -127,3 +127,29 @@ def test_warm_up_loads_the_model_with_the_settings_drafts_use(on, monkeypatch):
 
 def test_ollama_connect_timeout_is_short():
     assert llm.OLLAMA_TIMEOUT.connect <= 1
+
+
+@pytest.mark.parametrize("text", [
+    "ip route 10.0.7.0 255.255.255.0 R3",              # which router: only the user knows
+    "R1(config)# ip route 10.0.7.0 255.0.255.0 R3",   # invalid netmask: never repaired
+    "delete rule 0 on FW", "delete rule 7 on FW",       # rules that do not exist
+    "send USER traffic on R1 via R3",                   # no specific route: the user gives the prefix
+])
+def test_a_choice_only_the_user_can_make_is_never_sent_to_a_model(net, on, monkeypatch, text):
+    fake, calls = _fake({"ollama": "add a route on R2 to 10.0.7.0/24 via R3"})
+    monkeypatch.setattr(llm, "PROVIDERS", fake)
+    r = llm.interpret(text, net)
+    assert calls == [] and r["rewritten"] is None and r["unparsed"]
+
+
+def test_a_rewrite_that_drops_a_named_device_is_not_used(net, on, monkeypatch):
+    """Seen with llama3.1: "send USER traffic ..." came back as a route to a different device."""
+    fake, _ = _fake({"ollama": "connect FW and BACKUP"})
+    monkeypatch.setattr(llm, "PROVIDERS", fake)
+    assert llm.interpret("hook up USER with BACKUP somehow", net)["rewritten"] is None
+
+
+def test_named_devices_are_exact_ids_not_ordinary_words(net):
+    assert llm._named_devices("plug the user box into R3 and the db", net) == {"R3"}
+    assert llm._named_devices("block USER from DB on FW", net) == {"USER", "DB", "FW"}
+    assert llm._keeps_devices("blok ssh from USR to DB on FWW", "block ssh from USER to DB on FW", net)

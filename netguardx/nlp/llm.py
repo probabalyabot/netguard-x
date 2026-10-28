@@ -20,6 +20,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import time
 from pathlib import Path
 from typing import Any, Callable
@@ -73,6 +74,13 @@ Rules:
   a route's destination may be a device name (the parser looks up its prefix).
 - Write every line exactly in one of the grammar forms below, in plain words. Never use arrows,
   "->", "ANY" as a service, or JSON inside a line. To cover all traffic, leave the service out.
+- Keep every device the user named. You may fix its spelling or turn a label, role or address
+  into its id, but never swap it for a different device. Write devices by id, never by address.
+- Never fill in something the user left out that the parser needs a choice for: a Cisco
+  "ip route" line with no router named stays unchanged (never pick a router); "the firewall" on
+  a network with several firewalls stays unchanged unless the request says which one.
+- Keep rule numbers as typed. A rule number of 0, or above the number of rules on that device,
+  stays unchanged. Keep netmasks as typed; never repair an invalid one.
 - A request about a group of devices ("the guest laptops") becomes one line per device.
 - "should never be able to reach / talk to" is a requirement ("<src> must never reach <dst>");
   "block", "stop", "deny" and "don't let" are firewall rules on a firewall between the two.
@@ -264,6 +272,29 @@ def _score(r: dict[str, Any]) -> tuple[int, int]:
     return len(r["unparsed"]), -len(r.get("matched", []))
 
 
+# Parser messages that ask the user to choose something only they know: which router a Cisco line
+# is for, which of several firewalls, a valid netmask, a rule that exists, the prefix to change.
+# Asked to fix these, a small model picks one, so they are shown to the user instead.
+_NEEDS_A_CHOICE = re.compile(
+    r"a Cisco line needs a device|this network has |is not a valid netmask|rules count from 1|"
+    r"has only \d+ rules?|has no specific route for", re.I)
+
+
+def _named_devices(text: str, net: Network) -> set[str]:
+    """Device ids typed exactly: in capitals ("USER") or with a digit or hyphen ("core1"). Lowercase
+    plain words are left out, since ids such as LOG, DNS or MAIL are also ordinary words."""
+    ids = {n.id.upper() for n in net.nodes}
+    words = re.findall(r"[A-Za-z0-9][A-Za-z0-9_-]*", text)
+    return {w.upper() for w in words
+            if w.upper() in ids and (w.isupper() or any(c.isdigit() or c == "-" for c in w))}
+
+
+def _keeps_devices(typed: str, rewritten: str, net: Network) -> bool:
+    """A rewrite may fix spellings and resolve labels, but must not drop a device the user named."""
+    kept = {w.upper() for w in re.findall(r"[A-Za-z0-9][A-Za-z0-9_-]*", rewritten)}
+    return _named_devices(typed, net) <= kept
+
+
 def interpret(text: str, net: Network) -> dict[str, Any]:
     """``nlp.interpret``, with a model's restatement used when the parser understands it better.
     Providers are asked in order until one's version is fully understood. Adds ``rewritten`` (the
@@ -273,9 +304,14 @@ def interpret(text: str, net: Network) -> dict[str, Any]:
     best = {**parse(text, net), "rewritten": None, "rewritten_by": None}
     if not best["unparsed"] or not enabled():
         return best
+    if any(_NEEDS_A_CHOICE.search(u.get("reason") or "") for u in best["unparsed"]):
+        return best
     for name in providers():
         better = rewrite(text, net, name)
         if not better or better.strip() == text.strip():
+            continue
+        if not _keeps_devices(text, better, net):
+            log.info("%s rewrite dropped a device the user named; not used", name)
             continue
         r = parse(better, net)
         if _score(r) < _score(best):
