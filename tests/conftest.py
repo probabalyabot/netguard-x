@@ -1,9 +1,13 @@
 import json
+import os
 from pathlib import Path
 
 import pytest
 
 from netguardx import Network
+
+# Tests never call a language model (Ollama or Gemini), whatever .env says.
+os.environ["NETGUARDX_LLM"] = "0"
 
 EX = Path(__file__).parent.parent / "netguardx" / "examples"
 

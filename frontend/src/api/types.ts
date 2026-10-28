@@ -117,6 +117,8 @@ export interface InterpretResponse {
   unparsed: { text: string; reason: string | null; suggestion?: string }[]; needs_review: boolean; note: string;
   /** Each accepted sentence and its draft, in the order written (newer APIs only). */
   matched?: { text: string; kind: "change" | "policy"; index: number; understood_as: string }[];
+  /** The restated text that was parsed, when the server's optional rewrite step was used. */
+  rewritten?: string | null;
 }
 
 // ----- /api/eval/run (and summary.json written by `python -m netguardx eval --out`)

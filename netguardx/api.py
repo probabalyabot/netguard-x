@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import threading
 from pathlib import Path
 from typing import Optional
 
@@ -15,7 +16,7 @@ from .changes import ChangeError
 from .eval.jobs import Busy, JobStore
 from .impact import AnalysisOptions, _topology, analyze, layout_topology
 from .models import Change, Network
-from .nlp import interpret
+from .nlp import interpret, llm
 from .report import render_markdown
 from .risk import RiskWeights
 from .verify import verify_network
@@ -27,6 +28,12 @@ FRONTEND_DIST = HERE.parent / "frontend" / "dist"
 
 app = FastAPI(title="NetGuard-X", version=__version__,
               description="Predictive, explainable verification of network configuration changes.")
+
+
+@app.on_event("startup")
+def _warm_up_llm():
+    """Load the local model in the background, so the first draft that needs it is not slow."""
+    threading.Thread(target=llm.warm_up, daemon=True).start()
 
 
 class VerifyRequest(BaseModel):
@@ -140,6 +147,8 @@ def diff(req: SimulateRequest):
 
 @app.post("/api/interpret")
 def interpret_text(req: InterpretRequest):
+    if llm.enabled():
+        return llm.interpret(req.text, req.network)
     return interpret(req.text, req.network)
 
 
