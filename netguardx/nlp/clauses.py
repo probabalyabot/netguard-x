@@ -15,7 +15,14 @@ from dataclasses import dataclass
 from typing import Optional
 
 # ", then" / " and then" first, so the comma rule does not leave "then" at the start of a clause
-_SPLIT = re.compile(r",?\s+(?:and\s+)?then\s+|\.(?=\s|$)|;|,\s*(?:but\s+|and\s+)?|\s+but\s+")
+# "and" splits only before a word that starts a new request ("... on FW and block telnet ..."), so
+# "connect R2 and R3" and "between R1 and R2" stay whole
+_VERBS = (r"allow|permit|block|deny|forbid|add|remove|delete|drop|connect|disconnect|cable|unplug|"
+          r"send|reroute|route|point|change|set|create|make")
+_SPLIT = re.compile(r",?\s+(?:and\s+)?then\s+|\.(?=\s|$)|;|,\s*(?:but\s+|and\s+)?|\s+but\s+|"
+                    rf"\s+(?i:and)\s+(?=(?i:{_VERBS})\b)")
+# "1. ", "2) ", "- ", "* " at the start of a line: list markers, not part of the request
+_LIST_MARKER = re.compile(r"^\s*(?:\d{1,3}[.)]|[-*•])\s+")
 _PROMPT = re.compile(r"^\s*([A-Za-z0-9_.-]+)\s*(?:\(config[^)]*\))?\s*#\s*(.*)$")
 _ON_DEVICE = re.compile(r"^\s*on\s+([A-Za-z0-9_.-]+)\s*:\s*(.*)$", re.I)
 _CONFIGURE = re.compile(r"^\s*(?:configure|config)\s+(?:device\s+)?([A-Za-z0-9_.-]+)\s*$", re.I)
@@ -53,6 +60,7 @@ def split(text: str, device_of=None) -> list[Clause]:
     for line in text.splitlines():
         if _SESSION_ONLY.match(line):
             continue
+        line = _LIST_MARKER.sub("", line, count=1)
         for pattern in (_PROMPT, _ON_DEVICE, _CONFIGURE):
             m = pattern.match(line)
             if m and (dev := resolve(m.group(1))):

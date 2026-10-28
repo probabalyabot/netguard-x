@@ -66,3 +66,22 @@ def test_a_deleted_rule_reads_back_with_the_number_that_was_typed(net):
     """Rule numbers count from 1 when typed and when read back; only rule_index is 0-based."""
     [m] = interpret("delete rule 2 on FW", net)["matched"]
     assert m["understood_as"] == "Delete ACL rule 2 on FW"
+
+
+def test_and_before_a_new_request_splits_it_so_no_rule_is_lost(net):
+    """Found 2026-10-28: the first of two rules joined by "and" was dropped without an error."""
+    r = interpret("block ssh from USER to DB on FW and block telnet from USER to DB on FW", net)
+    assert [c["rule"]["port"] for c in r["changes"]] == [22, 23] and not r["unparsed"]
+    r = interpret("connect R2 and R3 AND send DB traffic on R1 via R3", net)
+    assert [c["operation"] for c in r["changes"]] == ["ADD_LINK", "MODIFY_ROUTE"]
+
+
+def test_and_between_devices_still_does_not_split(net):
+    assert interpret("connect R2 and R3", net)["changes"] == [
+        {"operation": "ADD_LINK", "node_a": "R2", "node_b": "R3"}]
+    assert len(interpret("remove the link between R1 and R2", net)["changes"]) == 1
+
+
+def test_list_markers_are_ignored(net):
+    r = interpret("1. block ssh from USER to DB on FW\n2) delete rule 1 on FW\n- connect R2 and R3", net)
+    assert len(r["matched"]) == 3 and not r["unparsed"]

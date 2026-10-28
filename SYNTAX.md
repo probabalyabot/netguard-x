@@ -223,9 +223,10 @@ the policy lock. Use `--operator` to act as a person.
 
 ## Several changes at once
 
-Put each change on its own line, or separate them with `;`, a full stop, or `, then`. A plain "and"
-never splits ("connect R2 and R3" is one link). Changes are checked in order, so a later one can use
-what an earlier one created.
+Put each change on its own line, or separate them with `;`, a full stop, or `, then`. "And" splits
+only when a new request starts after it ("… on FW and block telnet …"); "connect R2 and R3" is still
+one link. List markers such as `1.`, `2)` or `-` at the start of a line are ignored. Changes are
+checked in order, so a later one can use what an earlier one created.
 
 | You type | Understood as |
 |---|---|
