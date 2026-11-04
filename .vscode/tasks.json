@@ -3,6 +3,7 @@
   // a Mac): it starts the API and the UI side by side, waits until both are ready, then opens the
   // app in the browser. Needs the setup in RUN.md first (.venv and npm install in frontend/).
   // Stop: Terminal > Terminate Task (or the trash icon on each task terminal).
+  //EDITING
   "version": "2.0.0",
   "tasks": [
     {
