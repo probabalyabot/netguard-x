@@ -9,7 +9,7 @@ plain English, or pasted as Cisco-style `ip route` lines.
 Scope: static routing and ACLs, deterministic hop-by-hop forwarding. No NAT, no dynamic routing
 protocols, no live device access. "Executing" a command updates the in-memory model only.
 
-## Status
+## Status NOW
 
 | Part | State |
 |------|-------|
